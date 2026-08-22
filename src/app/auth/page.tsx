@@ -10,7 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
-import { Eye, EyeOff, Loader2, ArrowLeft, ShieldCheck, Sparkles, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Eye, EyeOff, Loader2, ArrowLeft, ShieldCheck, Sparkles, AlertCircle } from 'lucide-react';
 
 const GoogleIcon = () => (
   <svg className="w-5 h-5 mr-2.5" viewBox="0 0 24 24">
@@ -33,18 +33,25 @@ const GoogleIcon = () => (
   </svg>
 );
 
+const GithubIcon = () => (
+  <svg className="w-5 h-5 mr-2.5 fill-current" viewBox="0 0 24 24">
+    <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z" />
+  </svg>
+);
+
 export default function AuthPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const defaultTab = searchParams.get('tab') === 'signup' ? 'signup' : 'login';
 
-  const { profile, signInWithGoogle, signInWithEmail, signUpWithEmail } = useAuth();
+  const { profile, signInWithGoogle, signInWithGithub, signInWithEmail, signUpWithEmail } = useAuth();
   const { toast } = useToast();
 
   const [activeTab, setActiveTab] = useState<'login' | 'signup'>(defaultTab as 'login' | 'signup');
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+  const [isGithubLoading, setIsGithubLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   // Login form state
@@ -92,6 +99,33 @@ export default function AuthPage() {
       setErrorMsg("An unexpected error occurred during Google Sign-In.");
     } finally {
       setIsGoogleLoading(false);
+    }
+  };
+
+  const handleGithubSignIn = async () => {
+    setErrorMsg(null);
+    setIsGithubLoading(true);
+    try {
+      const { error } = await signInWithGithub();
+      if (error) {
+        setErrorMsg(error.message);
+        toast({
+          title: "Authentication failed",
+          description: error.message,
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Welcome to AgentSpace!",
+          description: "Successfully authenticated with GitHub.",
+        });
+        const redirect = searchParams.get('redirect') || '/';
+        router.push(redirect);
+      }
+    } catch (err: any) {
+      setErrorMsg("An unexpected error occurred during GitHub Sign-In.");
+    } finally {
+      setIsGithubLoading(false);
     }
   };
 
@@ -233,24 +267,45 @@ export default function AuthPage() {
               </TabsTrigger>
             </TabsList>
 
-            {/* Google OAuth Section (Prominent on Both Tabs) */}
-            <div className="space-y-4 mb-6">
-              <Button
-                type="button"
-                variant="outline"
-                className="w-full h-11 bg-background hover:bg-muted/60 border-border text-foreground font-medium rounded-xl transition-all shadow-sm flex items-center justify-center"
-                onClick={handleGoogleSignIn}
-                disabled={isGoogleLoading || isSubmitting}
-              >
-                {isGoogleLoading ? (
-                  <Loader2 className="w-5 h-5 animate-spin mr-2" />
-                ) : (
-                  <GoogleIcon />
-                )}
-                <span>Continue with Google</span>
-              </Button>
+            {/* Social OAuth Buttons (Google & GitHub) */}
+            <div className="space-y-3 mb-6">
+              <div className="grid grid-cols-2 gap-3">
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full h-11 bg-background hover:bg-muted/60 border-border text-foreground font-medium rounded-xl transition-all shadow-sm flex items-center justify-center"
+                  onClick={handleGoogleSignIn}
+                  disabled={isGoogleLoading || isGithubLoading || isSubmitting}
+                >
+                  {isGoogleLoading ? (
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                  ) : (
+                    <>
+                      <GoogleIcon />
+                      <span className="text-xs sm:text-sm font-semibold">Google</span>
+                    </>
+                  )}
+                </Button>
 
-              <div className="relative flex items-center justify-center">
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full h-11 bg-background hover:bg-muted/60 border-border text-foreground font-medium rounded-xl transition-all shadow-sm flex items-center justify-center"
+                  onClick={handleGithubSignIn}
+                  disabled={isGoogleLoading || isGithubLoading || isSubmitting}
+                >
+                  {isGithubLoading ? (
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                  ) : (
+                    <>
+                      <GithubIcon />
+                      <span className="text-xs sm:text-sm font-semibold">GitHub</span>
+                    </>
+                  )}
+                </Button>
+              </div>
+
+              <div className="relative flex items-center justify-center pt-1">
                 <div className="border-t border-border w-full" />
                 <span className="bg-card px-3 text-xs uppercase tracking-wider text-muted-foreground font-medium shrink-0">
                   Or continue with email
@@ -319,7 +374,7 @@ export default function AuthPage() {
 
                 <Button
                   type="submit"
-                  disabled={isSubmitting || isGoogleLoading}
+                  disabled={isSubmitting || isGoogleLoading || isGithubLoading}
                   className="w-full h-11 bg-primary hover:bg-primary/90 text-primary-foreground font-semibold rounded-xl transition-all shadow-md mt-2"
                 >
                   {isSubmitting ? (
@@ -425,7 +480,7 @@ export default function AuthPage() {
 
                 <Button
                   type="submit"
-                  disabled={isSubmitting || isGoogleLoading}
+                  disabled={isSubmitting || isGoogleLoading || isGithubLoading}
                   className="w-full h-11 bg-primary hover:bg-primary/90 text-primary-foreground font-semibold rounded-xl transition-all shadow-md mt-2"
                 >
                   {isSubmitting ? (

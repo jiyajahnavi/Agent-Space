@@ -99,7 +99,7 @@ export function Navbar() {
                       <p className="text-sm font-semibold leading-none">{profile.fullName}</p>
                       <p className="text-xs leading-none text-muted-foreground">@{profile.username}</p>
                       <div className="mt-1.5 inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-primary/10 text-primary w-fit">
-                        {profile.provider === 'google' ? 'Google OAuth Account' : profile.email}
+                        {profile.provider === 'google' ? 'Google OAuth Account' : profile.provider === 'github' ? 'GitHub OAuth Account' : profile.email}
                       </div>
                     </div>
                   </DropdownMenuLabel>

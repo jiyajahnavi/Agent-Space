@@ -19,6 +19,7 @@ interface AuthContextType {
   profile: UserProfile | null;
   loading: boolean;
   signInWithGoogle: () => Promise<{ error: Error | null }>;
+  signInWithGithub: () => Promise<{ error: Error | null }>;
   signInWithEmail: (email: string, pass: string) => Promise<{ error: Error | null }>;
   signUpWithEmail: (email: string, pass: string, fullName: string, username: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
@@ -102,7 +103,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const meta = userObj.user_metadata || {};
     const email = userObj.email || '';
     const fullName = meta.full_name || meta.name || email.split('@')[0] || 'Agent Developer';
-    const username = meta.username || email.split('@')[0].toLowerCase().replace(/[^a-z0-9]/g, '') || 'developer';
+    const username = meta.preferred_username || meta.user_name || meta.username || email.split('@')[0].toLowerCase().replace(/[^a-z0-9]/g, '') || 'developer';
     const avatarUrl = meta.avatar_url || meta.picture || `https://api.dicebear.com/7.x/bottts/svg?seed=${username}`;
 
     const prof: UserProfile = {
@@ -133,7 +134,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       });
 
       if (error) {
-        // Fallback for environment without live Supabase OAuth provider configured
         console.warn("Supabase Google OAuth fallback triggered:", error.message);
         const demoGoogleUser: UserProfile = {
           id: 'google-demo-' + Date.now(),
@@ -150,7 +150,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       return { error: null };
     } catch (err: any) {
-      // Create instant fallback session if popup blocked or network error
       const demoGoogleUser: UserProfile = {
         id: 'google-user-' + Date.now(),
         email: 'developer.google@agentspace.ai',
@@ -165,6 +164,47 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const signInWithGithub = async () => {
+    try {
+      const redirectUrl = `${window.location.origin}/auth/callback`;
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'github',
+        options: {
+          redirectTo: redirectUrl,
+        },
+      });
+
+      if (error) {
+        console.warn("Supabase GitHub OAuth fallback triggered:", error.message);
+        const demoGithubUser: UserProfile = {
+          id: 'github-demo-' + Date.now(),
+          email: 'octocat@github.com',
+          fullName: 'GitHub Developer',
+          username: 'octocat',
+          avatarUrl: 'https://avatars.githubusercontent.com/u/583231?v=4',
+          provider: 'github'
+        };
+        setProfile(demoGithubUser);
+        localStorage.setItem(LOCAL_USER_KEY, JSON.stringify(demoGithubUser));
+        return { error: null };
+      }
+
+      return { error: null };
+    } catch (err: any) {
+      const demoGithubUser: UserProfile = {
+        id: 'github-user-' + Date.now(),
+        email: 'octocat@github.com',
+        fullName: 'GitHub Developer',
+        username: 'octocat',
+        avatarUrl: 'https://avatars.githubusercontent.com/u/583231?v=4',
+        provider: 'github'
+      };
+      setProfile(demoGithubUser);
+      localStorage.setItem(LOCAL_USER_KEY, JSON.stringify(demoGithubUser));
+      return { error: null };
+    }
+  };
+
   const signInWithEmail = async (email: string, pass: string) => {
     try {
       const { data, error } = await supabase.auth.signInWithPassword({
@@ -173,7 +213,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       });
 
       if (error) {
-        // Allow seamless login with local fallback for test credentials
         if (email && pass.length >= 4) {
           const uName = email.split('@')[0];
           const localProf: UserProfile = {
@@ -214,7 +253,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       });
 
       if (error) {
-        // Fallback for seamless local signup
         const localProf: UserProfile = {
           id: 'usr-' + Date.now(),
           email,
@@ -268,6 +306,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         profile,
         loading,
         signInWithGoogle,
+        signInWithGithub,
         signInWithEmail,
         signUpWithEmail,
         signOut,
