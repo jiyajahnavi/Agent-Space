@@ -18,8 +18,8 @@ interface AuthContextType {
   session: Session | null;
   profile: UserProfile | null;
   loading: boolean;
-  signInWithGoogle: () => Promise<{ error: Error | null }>;
-  signInWithGithub: () => Promise<{ error: Error | null }>;
+  signInWithGoogle: () => Promise<{ error: Error | null; redirected?: boolean }>;
+  signInWithGithub: () => Promise<{ error: Error | null; redirected?: boolean }>;
   signInWithEmail: (email: string, pass: string) => Promise<{ error: Error | null }>;
   signUpWithEmail: (email: string, pass: string, fullName: string, username: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
@@ -145,10 +145,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         };
         setProfile(demoGoogleUser);
         localStorage.setItem(LOCAL_USER_KEY, JSON.stringify(demoGoogleUser));
-        return { error: null };
+        return { error: null, redirected: false };
       }
 
-      return { error: null };
+      return { error: null, redirected: true };
     } catch (err: any) {
       const demoGoogleUser: UserProfile = {
         id: 'google-user-' + Date.now(),
@@ -160,7 +160,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       };
       setProfile(demoGoogleUser);
       localStorage.setItem(LOCAL_USER_KEY, JSON.stringify(demoGoogleUser));
-      return { error: null };
+      return { error: null, redirected: false };
     }
   };
 
@@ -186,10 +186,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         };
         setProfile(demoGithubUser);
         localStorage.setItem(LOCAL_USER_KEY, JSON.stringify(demoGithubUser));
-        return { error: null };
+        return { error: null, redirected: false };
       }
 
-      return { error: null };
+      return { error: null, redirected: true };
     } catch (err: any) {
       const demoGithubUser: UserProfile = {
         id: 'github-user-' + Date.now(),
@@ -201,7 +201,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       };
       setProfile(demoGithubUser);
       localStorage.setItem(LOCAL_USER_KEY, JSON.stringify(demoGithubUser));
-      return { error: null };
+      return { error: null, redirected: false };
     }
   };
 

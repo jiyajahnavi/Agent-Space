@@ -79,7 +79,7 @@ function AuthContent() {
     setErrorMsg(null);
     setIsGoogleLoading(true);
     try {
-      const { error } = await signInWithGoogle();
+      const { error, redirected } = await signInWithGoogle();
       if (error) {
         setErrorMsg(error.message);
         toast({
@@ -87,7 +87,7 @@ function AuthContent() {
           description: error.message,
           variant: "destructive",
         });
-      } else {
+      } else if (!redirected) {
         toast({
           title: "Welcome to AgentSpace!",
           description: "Successfully authenticated with Google.",
@@ -106,7 +106,7 @@ function AuthContent() {
     setErrorMsg(null);
     setIsGithubLoading(true);
     try {
-      const { error } = await signInWithGithub();
+      const { error, redirected } = await signInWithGithub();
       if (error) {
         setErrorMsg(error.message);
         toast({
@@ -114,7 +114,7 @@ function AuthContent() {
           description: error.message,
           variant: "destructive",
         });
-      } else {
+      } else if (!redirected) {
         toast({
           title: "Welcome to AgentSpace!",
           description: "Successfully authenticated with GitHub.",
