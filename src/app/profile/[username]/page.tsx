@@ -1,17 +1,20 @@
 "use client";
 
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { Mail, MapPin, Link as LinkIcon, Twitter, Users, Star, BookOpen, GitBranch, GitPullRequest, CircleDot, Clock, User, Plus, UserPlus, UserCheck, ArrowRight } from 'lucide-react';
+import { Mail, MapPin, Link as LinkIcon, Twitter, Users, Star, BookOpen, GitBranch, GitPullRequest, CircleDot, Clock, User, Plus, UserPlus, UserCheck, ArrowRight, Edit3, Loader2, CheckCircle2 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import { MOCK_USER } from '@/lib/data';
 import { AgentCard } from '@/components/agent-card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent } from '@/components/ui/card';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { useAgents } from '@/context/agents-context';
 import { useAuth } from '@/context/auth-context';
 import { useFollow } from '@/context/follow-context';
@@ -19,8 +22,9 @@ import { toast } from '@/hooks/use-toast';
 
 export default function ProfilePage() {
     const params = useParams();
+    const router = useRouter();
     const { agents } = useAgents();
-    const { profile } = useAuth();
+    const { profile, updateProfile } = useAuth();
     const { followUser, unfollowUser, isFollowing, getFollowers, getFollowing } = useFollow();
 
     const rawParamUser = typeof params.username === 'string' ? decodeURIComponent(params.username) : '';
@@ -54,13 +58,13 @@ export default function ProfilePage() {
     } : (isSelf && profile ? {
         name: profile.fullName || profile.username,
         username: profile.username,
-        bio: "AI Agent Builder on AgentSpace.",
+        bio: profile.bio || "AI Agent Builder on AgentSpace.",
         avatar: profile.avatarUrl,
         followers: followersList.length,
         following: followingList.length,
-        location: "",
-        website: "",
-        twitter: "",
+        location: profile.location || "",
+        website: profile.website || "",
+        twitter: profile.twitter || "",
     } : {
         name: cleanParamUser || 'Developer',
         username: cleanParamUser || 'developer',
@@ -77,6 +81,61 @@ export default function ProfilePage() {
 
     // Dialog state for viewing Followers/Following list
     const [dialogMode, setDialogMode] = useState<'followers' | 'following' | null>(null);
+
+    // Dialog state for Edit Profile
+    const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+    const [editFullName, setEditFullName] = useState('');
+    const [editUsername, setEditUsername] = useState('');
+    const [editBio, setEditBio] = useState('');
+    const [editLocation, setEditLocation] = useState('');
+    const [editWebsite, setEditWebsite] = useState('');
+    const [editTwitter, setEditTwitter] = useState('');
+    const [editAvatarUrl, setEditAvatarUrl] = useState('');
+    const [isSavingProfile, setIsSavingProfile] = useState(false);
+
+    const handleOpenEditModal = () => {
+        setEditFullName(user.name || '');
+        setEditUsername(user.username || '');
+        setEditBio(user.bio || '');
+        setEditLocation(user.location || '');
+        setEditWebsite(user.website || '');
+        setEditTwitter(user.twitter || '');
+        setEditAvatarUrl(user.avatar || '');
+        setIsEditModalOpen(true);
+    };
+
+    const handleSaveProfile = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!editUsername.trim()) {
+            toast({ title: "Error", description: "Username cannot be empty.", variant: "destructive" });
+            return;
+        }
+
+        setIsSavingProfile(true);
+        try {
+            const cleanNewUsername = editUsername.trim().replace(/^@/, '').toLowerCase();
+            await updateProfile({
+                fullName: editFullName.trim(),
+                username: cleanNewUsername,
+                bio: editBio.trim(),
+                location: editLocation.trim(),
+                website: editWebsite.trim(),
+                twitter: editTwitter.trim().replace(/^@/, ''),
+                avatarUrl: editAvatarUrl.trim() || undefined,
+            });
+
+            toast({ title: "Profile Updated", description: "Your profile details have been saved!" });
+            setIsEditModalOpen(false);
+
+            if (cleanNewUsername !== user.username.toLowerCase()) {
+                router.push(`/profile/@${cleanNewUsername}`);
+            }
+        } catch (error) {
+            toast({ title: "Error", description: "Failed to update profile.", variant: "destructive" });
+        } finally {
+            setIsSavingProfile(false);
+        }
+    };
 
     const handleFollowToggle = () => {
         if (!profile) {
@@ -166,7 +225,14 @@ export default function ProfilePage() {
                             {user.bio || "No bio provided yet."}
                         </p>
                         {isSelf ? (
-                            <Button variant="outline" className="w-full h-9 rounded-xl font-medium">Edit profile</Button>
+                            <Button
+                                onClick={handleOpenEditModal}
+                                variant="outline"
+                                className="w-full h-9 rounded-xl font-medium gap-2 border-primary/30 hover:bg-primary/10 hover:text-primary transition-all"
+                            >
+                                <Edit3 className="h-4 w-4" />
+                                Edit profile
+                            </Button>
                         ) : (
                             <Button
                                 onClick={handleFollowToggle}
@@ -493,6 +559,163 @@ export default function ProfilePage() {
                             )
                         )}
                     </div>
+                </DialogContent>
+            </Dialog>
+
+            {/* Edit Profile Dialog */}
+            <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
+                <DialogContent className="sm:max-w-md rounded-2xl border-border bg-background shadow-xl">
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2 text-lg font-bold">
+                            <Edit3 className="h-5 w-5 text-primary" />
+                            Edit Public Profile
+                        </DialogTitle>
+                        <DialogDescription className="text-xs text-muted-foreground">
+                            Update your personal information displayed on your AgentSpace profile.
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    <form onSubmit={handleSaveProfile} className="space-y-4 pt-2">
+                        <div className="grid grid-cols-2 gap-3">
+                            <div className="space-y-1.5">
+                                <Label htmlFor="edit-name" className="text-xs font-bold">Full Name</Label>
+                                <Input
+                                    id="edit-name"
+                                    value={editFullName}
+                                    onChange={(e) => setEditFullName(e.target.value)}
+                                    placeholder="Your full name"
+                                    className="h-9 text-xs rounded-xl bg-background/50 border-border focus:border-primary"
+                                />
+                            </div>
+
+                            <div className="space-y-1.5">
+                                <Label htmlFor="edit-username" className="text-xs font-bold">Username</Label>
+                                <Input
+                                    id="edit-username"
+                                    value={editUsername}
+                                    onChange={(e) => setEditUsername(e.target.value)}
+                                    placeholder="username"
+                                    className="h-9 text-xs rounded-xl bg-background/50 border-border focus:border-primary font-mono"
+                                />
+                            </div>
+                        </div>
+
+                        <div className="space-y-1.5">
+                            <Label htmlFor="edit-bio" className="text-xs font-bold">Bio</Label>
+                            <Textarea
+                                id="edit-bio"
+                                value={editBio}
+                                onChange={(e) => setEditBio(e.target.value)}
+                                placeholder="Tell the community about yourself and what you build..."
+                                className="min-h-[80px] text-xs rounded-xl bg-background/50 border-border focus:border-primary"
+                            />
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-3">
+                            <div className="space-y-1.5">
+                                <Label htmlFor="edit-location" className="text-xs font-bold">Location</Label>
+                                <Input
+                                    id="edit-location"
+                                    value={editLocation}
+                                    onChange={(e) => setEditLocation(e.target.value)}
+                                    placeholder="San Francisco, CA"
+                                    className="h-9 text-xs rounded-xl bg-background/50 border-border focus:border-primary"
+                                />
+                            </div>
+
+                            <div className="space-y-1.5">
+                                <Label htmlFor="edit-twitter" className="text-xs font-bold">Twitter / X Handle</Label>
+                                <Input
+                                    id="edit-twitter"
+                                    value={editTwitter}
+                                    onChange={(e) => setEditTwitter(e.target.value)}
+                                    placeholder="handle"
+                                    className="h-9 text-xs rounded-xl bg-background/50 border-border focus:border-primary"
+                                />
+                            </div>
+                        </div>
+
+                        <div className="space-y-1.5">
+                            <Label htmlFor="edit-website" className="text-xs font-bold">Website URL</Label>
+                            <Input
+                                id="edit-website"
+                                value={editWebsite}
+                                onChange={(e) => setEditWebsite(e.target.value)}
+                                placeholder="https://yourportfolio.com"
+                                className="h-9 text-xs rounded-xl bg-background/50 border-border focus:border-primary"
+                            />
+                        </div>
+
+                        {/* Select Avatar Preset */}
+                        <div className="space-y-2">
+                            <Label className="text-xs font-bold flex items-center justify-between">
+                                <span>Choose Avatar</span>
+                                <span className="text-[10px] font-normal text-muted-foreground">Select one of 6 preset avatars</span>
+                            </Label>
+                            <div className="grid grid-cols-6 gap-2">
+                                {[
+                                    { id: 'avatar-1', name: 'Coder', url: '/avatars/avatar-1.png' },
+                                    { id: 'avatar-2', name: 'Night', url: '/avatars/avatar-2.png' },
+                                    { id: 'avatar-3', name: 'Sunset', url: '/avatars/avatar-3.png' },
+                                    { id: 'avatar-4', name: 'Cozy', url: '/avatars/avatar-4.png' },
+                                    { id: 'avatar-5', name: 'Star', url: '/avatars/avatar-5.png' },
+                                    { id: 'avatar-6', name: 'Cap', url: '/avatars/avatar-6.png' },
+                                ].map((preset) => {
+                                    const isSelected = editAvatarUrl === preset.url;
+                                    return (
+                                        <button
+                                            key={preset.id}
+                                            type="button"
+                                            onClick={() => setEditAvatarUrl(preset.url)}
+                                            className={`relative flex flex-col items-center justify-center p-1.5 rounded-xl border transition-all cursor-pointer group ${
+                                                isSelected
+                                                    ? 'border-primary bg-primary/10 ring-2 ring-primary/30 scale-105'
+                                                    : 'border-border/80 hover:border-primary/50 hover:bg-muted/30'
+                                            }`}
+                                        >
+                                            <Avatar className="h-10 w-10 rounded-lg overflow-hidden">
+                                                <AvatarImage src={preset.url} alt={preset.name} className="object-cover" />
+                                                <AvatarFallback className="text-[10px] font-bold bg-primary/20 text-primary">
+                                                    {preset.name[0]}
+                                                </AvatarFallback>
+                                            </Avatar>
+                                            <span className="text-[9px] font-medium mt-1 truncate w-full text-center text-muted-foreground group-hover:text-foreground">
+                                                {preset.name}
+                                            </span>
+                                            {isSelected && (
+                                                <CheckCircle2 className="h-4 w-4 text-primary absolute -top-1 -right-1 bg-background rounded-full border border-primary/20" />
+                                            )}
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        </div>
+
+                        <DialogFooter className="pt-3 gap-2 sm:gap-0">
+                            <Button
+                                type="button"
+                                variant="ghost"
+                                onClick={() => setIsEditModalOpen(false)}
+                                className="h-9 rounded-xl text-xs"
+                            >
+                                Cancel
+                            </Button>
+                            <Button
+                                type="submit"
+                                disabled={isSavingProfile}
+                                className="h-9 rounded-xl text-xs bg-primary hover:bg-primary/90 gap-2 font-semibold shadow-md"
+                            >
+                                {isSavingProfile ? (
+                                    <>
+                                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                        Saving...
+                                    </>
+                                ) : (
+                                    "Save Changes"
+                                )}
+                            </Button>
+                        </DialogFooter>
+                    </form>
                 </DialogContent>
             </Dialog>
         </div>

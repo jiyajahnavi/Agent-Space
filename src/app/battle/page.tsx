@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useMemo, useRef } from 'react';
-import { Swords, Zap, RefreshCcw, MessageSquare, Bot, AlertCircle, Loader2, Search, Check, ChevronDown, User, FileUp, FileText, X } from 'lucide-react';
+import { useState, useMemo, useRef, useEffect } from 'react';
+import { Swords, Zap, RefreshCcw, MessageSquare, Bot, AlertCircle, Loader2, Search, Check, ChevronDown, User, FileUp, FileText, X, Filter } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
@@ -16,7 +16,63 @@ import { runAgentClient } from '@/lib/runAgentClient';
 import { OutputDisplay } from '@/components/agent/OutputDisplay';
 import { cn } from '@/lib/utils';
 import { useAgents } from '@/context/agents-context';
+import { useAuth } from '@/context/auth-context';
 import { AuthGuard } from '@/components/auth-guard';
+import { Agent } from '@/lib/types';
+
+/**
+ * Helper to check if two agents are in similar domain/category/project type.
+ */
+function areAgentsSimilar(agentA: Agent, agentB: Agent): boolean {
+    if (!agentA || !agentB) return true;
+    if (agentA.id === agentB.id) return false;
+
+    const nameA = agentA.name.toLowerCase();
+    const nameB = agentB.name.toLowerCase();
+    const descA = (agentA.description || '').toLowerCase();
+    const descB = (agentB.description || '').toLowerCase();
+    const catA = (agentA.category || '').toLowerCase();
+    const catB = (agentB.category || '').toLowerCase();
+
+    // 1. Same category
+    if (catA && catB && catA === catB) return true;
+
+    // 2. Tag overlap
+    if (agentA.tags && agentB.tags) {
+        const setA = new Set(agentA.tags.map(t => t.toLowerCase()));
+        if (agentB.tags.some(t => setA.has(t.toLowerCase()))) return true;
+    }
+
+    // 3. Known domain topic clusters
+    const topicClusters = [
+        ['resume', 'cv', 'ats', 'career', 'job', 'interview', 'applicant', 'hire', 'recruitment'],
+        ['sql', 'query', 'database', 'postgres', 'mysql', 'db', 'table', 'schema'],
+        ['code', 'debugger', 'syntax', 'programming', 'developer', 'python', 'javascript', 'ts', 'bug', 'script'],
+        ['linkedin', 'social', 'post', 'marketing', 'networking', 'growth'],
+        ['writing', 'cover letter', 'email', 'letter', 'essay', 'article', 'writer', 'doc'],
+        ['legal', 'contract', 'agreement', 'summarizer', 'law', 'compliance'],
+        ['research', 'summary', 'paper', 'article', 'analysis', 'analyzer', 'topic'],
+        ['planner', 'travel', 'fitness', 'workout', 'diet', 'recipe', 'food', 'itinerary', 'trip', 'coach'],
+    ];
+
+    const fullA = `${nameA} ${descA} ${catA} ${(agentA.tags || []).join(' ')}`.toLowerCase();
+    const fullB = `${nameB} ${descB} ${catB} ${(agentB.tags || []).join(' ')}`.toLowerCase();
+
+    for (const keywords of topicClusters) {
+        const aMatches = keywords.some(kw => fullA.includes(kw));
+        const bMatches = keywords.some(kw => fullB.includes(kw));
+        if (aMatches && bMatches) return true;
+    }
+
+    // 4. Overlapping key words (>= 4 chars)
+    const ignoreWords = new Set(['agent', 'generator', 'checker', 'space', 'with', 'your', 'from', 'that', 'this', 'pro', 'gen', 'tool']);
+    const wordsA = new Set(
+        fullA.split(/[^a-z0-9]+/i).filter(w => w.length >= 4 && !ignoreWords.has(w))
+    );
+    const wordsB = fullB.split(/[^a-z0-9]+/i).filter(w => w.length >= 4 && !ignoreWords.has(w));
+
+    return wordsB.some(w => wordsA.has(w));
+}
 
 export default function BattleModePage() {
     return (
@@ -31,16 +87,69 @@ export default function BattleModePage() {
 
 function BattleModeContent() {
     const { agents } = useAgents();
+    const { profile } = useAuth();
     const [prompt, setPrompt] = useState('');
     const [file, setFile] = useState<File | null>(null);
     const [agentAId, setAgentAId] = useState(agents[0]?.id || '');
-    const [agentBId, setAgentBId] = useState(agents[2]?.id || agents[1]?.id || '');
+    const [agentBId, setAgentBId] = useState('');
     const [responseA, setResponseA] = useState<any>(null);
     const [responseB, setResponseB] = useState<any>(null);
     const [isFighting, setIsFighting] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     const agentA = agents.find(a => a.id === agentAId);
+
+    const currentUsername = (profile?.username || '').toLowerCase().replace(/^@/, '');
+    const agentAOwner = (agentA?.owner || '').toLowerCase().replace(/^@/, '');
+
+    // Filter available Agent B competitors:
+    // 1. Must belong to OTHER users (owner !== agentA.owner && owner !== currentUsername)
+    // 2. Must be SIMILAR project/domain to Agent A (e.g. Resume Analyzer -> Resume Reviewer)
+    const availableOpponents = useMemo(() => {
+        if (!agentA) return [];
+
+        return agents.filter(agent => {
+            if (agent.id === agentA.id) return false;
+
+            const ownerB = (agent.owner || '').toLowerCase().replace(/^@/, '');
+
+            // Other user agents only
+            const isDifferentOwnerFromA = ownerB !== agentAOwner;
+            const isDifferentFromCurrentUser = !currentUsername || ownerB !== currentUsername;
+
+            if (!isDifferentOwnerFromA || (agentAOwner === currentUsername && !isDifferentFromCurrentUser)) {
+                return false;
+            }
+
+            // Similar domain / category / project match
+            return areAgentsSimilar(agentA, agent);
+        });
+    }, [agents, agentA, agentAOwner, currentUsername]);
+
+    // Fallback opponents if no exact similar match exists yet among other users
+    const fallbackOpponents = useMemo(() => {
+        if (!agentA) return [];
+        return agents.filter(agent => {
+            if (agent.id === agentA.id) return false;
+            const ownerB = (agent.owner || '').toLowerCase().replace(/^@/, '');
+            return ownerB !== agentAOwner && (!currentUsername || ownerB !== currentUsername);
+        });
+    }, [agents, agentA, agentAOwner, currentUsername]);
+
+    const finalOpponents = availableOpponents.length > 0 ? availableOpponents : fallbackOpponents;
+
+    // Auto-select valid Agent B whenever Agent A changes
+    useEffect(() => {
+        if (finalOpponents.length > 0) {
+            const isCurrentBValid = finalOpponents.some(op => op.id === agentBId);
+            if (!isCurrentBValid) {
+                setAgentBId(finalOpponents[0].id);
+            }
+        } else {
+            setAgentBId('');
+        }
+    }, [agentAId, finalOpponents, agentBId]);
+
     const agentB = agents.find(a => a.id === agentBId);
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -57,6 +166,11 @@ function BattleModeContent() {
     async function handleBattle() {
         if (!prompt && !file) {
             toast({ title: "Error", description: "Enter a prompt or upload a PDF for the agents to process.", variant: "destructive" });
+            return;
+        }
+
+        if (!agentA || !agentB) {
+            toast({ title: "Error", description: "Please select valid agents to battle.", variant: "destructive" });
             return;
         }
 
@@ -112,7 +226,7 @@ function BattleModeContent() {
                 <CardContent className="p-8 space-y-8">
                     <div className="grid grid-cols-1 md:grid-cols-11 gap-6 items-center">
                         <div className="md:col-span-5 space-y-2">
-                            <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground ml-1">Agent A</label>
+                            <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground ml-1">Agent A (Challenger)</label>
                             <SearchableAgentSelector
                                 selectedAgentId={agentAId}
                                 onSelect={setAgentAId}
@@ -125,11 +239,23 @@ function BattleModeContent() {
                         </div>
 
                         <div className="md:col-span-5 space-y-2">
-                            <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground ml-1">Agent B</label>
+                            <div className="flex items-center justify-between">
+                                <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground ml-1">Agent B (Opponent)</label>
+                                <span className="text-[10px] font-medium text-emerald-500 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20 flex items-center gap-1">
+                                    <Filter className="h-3 w-3" />
+                                    Other Users & Similar Domain
+                                </span>
+                            </div>
                             <SearchableAgentSelector
                                 selectedAgentId={agentBId}
                                 onSelect={setAgentBId}
-                                placeholder="Search Agent B..."
+                                placeholder="Search Opponent Agent..."
+                                allowedAgents={finalOpponents}
+                                headerNote={
+                                    availableOpponents.length > 0
+                                        ? `Showing ${availableOpponents.length} similar competitor(s) from other creators`
+                                        : `Showing other user agents`
+                                }
                             />
                         </div>
                     </div>
@@ -286,19 +412,32 @@ function BattleModeContent() {
     );
 }
 
-function SearchableAgentSelector({ selectedAgentId, onSelect, placeholder }: { selectedAgentId: string; onSelect: (id: string) => void; placeholder?: string; }) {
+function SearchableAgentSelector({
+    selectedAgentId,
+    onSelect,
+    placeholder,
+    allowedAgents,
+    headerNote,
+}: {
+    selectedAgentId: string;
+    onSelect: (id: string) => void;
+    placeholder?: string;
+    allowedAgents?: Agent[];
+    headerNote?: string;
+}) {
     const { agents } = useAgents();
     const [open, setOpen] = useState(false);
     const [search, setSearch] = useState('');
 
-    const selectedAgent = agents.find(a => a.id === selectedAgentId);
+    const pool = allowedAgents || agents;
+    const selectedAgent = pool.find(a => a.id === selectedAgentId) || agents.find(a => a.id === selectedAgentId);
 
     const filteredAgents = useMemo(() => {
-        return agents.filter(agent => {
-            const searchStr = `${agent.owner} / ${agent.name}`.toLowerCase();
+        return pool.filter(agent => {
+            const searchStr = `${agent.owner} / ${agent.name} ${agent.category || ''} ${(agent.tags || []).join(' ')}`.toLowerCase();
             return searchStr.includes(search.toLowerCase());
         });
-    }, [search, agents]);
+    }, [search, pool]);
 
     return (
         <Popover open={open} onOpenChange={setOpen}>
@@ -321,6 +460,12 @@ function SearchableAgentSelector({ selectedAgentId, onSelect, placeholder }: { s
                 </Button>
             </PopoverTrigger>
             <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0 bg-card border-muted shadow-2xl" align="start">
+                {headerNote && (
+                    <div className="bg-muted/40 border-b border-muted px-3 py-1.5 text-[11px] font-medium text-emerald-500 flex items-center justify-between">
+                        <span>{headerNote}</span>
+                        <span className="text-[9px] uppercase tracking-wider text-muted-foreground font-semibold">Matched</span>
+                    </div>
+                )}
                 <div className="flex items-center border-b border-muted px-3 h-11">
                     <Search className="mr-2 h-4 w-4 shrink-0 opacity-50" />
                     <input
@@ -333,7 +478,9 @@ function SearchableAgentSelector({ selectedAgentId, onSelect, placeholder }: { s
                 <ScrollArea className="h-72">
                     <div className="p-1">
                         {filteredAgents.length === 0 ? (
-                            <div className="py-6 text-center text-sm text-muted-foreground">No agents found.</div>
+                            <div className="py-6 text-center text-xs text-muted-foreground px-4">
+                                No matching competitor agents found from other creators.
+                            </div>
                         ) : (
                             filteredAgents.map((agent) => (
                                 <button

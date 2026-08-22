@@ -124,7 +124,9 @@ export async function createGithubRepoForAgent({
     });
 
     // 3. Commit index.ts Runnable Code Scaffolding
-    const indexTsCode = `/**
+    const indexTsCode = (promptTemplate.trim().startsWith('import') || promptTemplate.trim().startsWith('export') || promptTemplate.trim().startsWith('function') || promptTemplate.trim().startsWith('const') || promptTemplate.trim().startsWith('//'))
+      ? promptTemplate
+      : `/**
  * ${cleanRepoName} - AgentSpace Autonomous AI Agent
  * Description: ${description || 'Autonomous AI agent scaffolding'}
  */
@@ -143,7 +145,7 @@ export interface AgentOutput {
 export async function runAgent(payload: AgentInput): Promise<AgentOutput> {
   console.log("[Agent Execution] Running ${cleanRepoName} with input:", payload.input);
   
-  // Master Prompt Instructions
+  // Master Instructions / Prompt
   const prompt = \`${promptTemplate.replace(/`/g, '\\`')}\`;
 
   return {

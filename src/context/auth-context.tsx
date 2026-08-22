@@ -10,6 +10,10 @@ export interface UserProfile {
   fullName: string;
   username: string;
   avatarUrl?: string;
+  bio?: string;
+  location?: string;
+  website?: string;
+  twitter?: string;
   provider?: string;
   providerToken?: string;
 }
@@ -23,6 +27,7 @@ interface AuthContextType {
   signInWithGithub: () => Promise<{ error: Error | null; redirected?: boolean }>;
   signInWithEmail: (email: string, pass: string) => Promise<{ error: Error | null }>;
   signUpWithEmail: (email: string, pass: string, fullName: string, username: string) => Promise<{ error: Error | null }>;
+  updateProfile: (newProfileData: Partial<UserProfile>) => Promise<void>;
   signOut: () => Promise<void>;
 }
 
@@ -298,6 +303,44 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const updateProfile = async (newProfileData: Partial<UserProfile>) => {
+    setProfile((prev) => {
+      const updated: UserProfile = {
+        id: prev?.id || 'usr-' + Date.now(),
+        email: prev?.email || '',
+        fullName: newProfileData.fullName !== undefined ? newProfileData.fullName : (prev?.fullName || ''),
+        username: newProfileData.username !== undefined ? newProfileData.username : (prev?.username || ''),
+        avatarUrl: newProfileData.avatarUrl !== undefined ? newProfileData.avatarUrl : prev?.avatarUrl,
+        bio: newProfileData.bio !== undefined ? newProfileData.bio : prev?.bio,
+        location: newProfileData.location !== undefined ? newProfileData.location : prev?.location,
+        website: newProfileData.website !== undefined ? newProfileData.website : prev?.website,
+        twitter: newProfileData.twitter !== undefined ? newProfileData.twitter : prev?.twitter,
+        provider: prev?.provider,
+        providerToken: prev?.providerToken,
+      };
+      localStorage.setItem(LOCAL_USER_KEY, JSON.stringify(updated));
+      return updated;
+    });
+
+    try {
+      if (user) {
+        await supabase.auth.updateUser({
+          data: {
+            full_name: newProfileData.fullName,
+            preferred_username: newProfileData.username,
+            avatar_url: newProfileData.avatarUrl,
+            bio: newProfileData.bio,
+            location: newProfileData.location,
+            website: newProfileData.website,
+            twitter: newProfileData.twitter,
+          }
+        });
+      }
+    } catch (e) {
+      console.warn("Supabase user profile update warning:", e);
+    }
+  };
+
   const signOut = async () => {
     try {
       await supabase.auth.signOut();
@@ -322,6 +365,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         signInWithGithub,
         signInWithEmail,
         signUpWithEmail,
+        updateProfile,
         signOut,
       }}
     >

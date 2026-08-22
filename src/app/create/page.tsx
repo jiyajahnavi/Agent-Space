@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from 'react';
-import { Sparkles, Globe, Lock, Plus, Shield, Loader2, GitBranch, ExternalLink } from 'lucide-react';
+import { useState, useRef } from 'react';
+import { Sparkles, Globe, Lock, Plus, Shield, Loader2, GitBranch, ExternalLink, FileCode, UploadCloud, X, FileText, CheckCircle2, Code } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -38,13 +38,44 @@ function CreateAgentContent() {
     const [description, setDescription] = useState('');
     const [isGenerating, setIsGenerating] = useState(false);
     const [isCreating, setIsCreating] = useState(false);
-    const [promptTemplate, setPromptTemplate] = useState('');
+    const [agentCode, setAgentCode] = useState('');
+    const [uploadedFile, setUploadedFile] = useState<{ name: string; size: number } | null>(null);
     const [repoName, setRepoName] = useState('');
     const [visibility, setVisibility] = useState<'public' | 'private'>('public');
     const [syncGithub, setSyncGithub] = useState(true);
 
+    const fileInputRef = useRef<HTMLInputElement>(null);
+
     const currentUser = profile?.username || 'developer';
     const isGithubConnected = profile?.provider === 'github' || !!profile?.providerToken;
+
+    const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        if (file.size > 5 * 1024 * 1024) {
+            toast({ title: "File Too Large", description: "Please upload a file smaller than 5MB.", variant: "destructive" });
+            return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            const content = event.target?.result as string;
+            setAgentCode(content || '');
+            setUploadedFile({ name: file.name, size: file.size });
+            toast({ title: "Code File Loaded", description: `Successfully loaded code from ${file.name}` });
+        };
+        reader.onerror = () => {
+            toast({ title: "Error", description: "Failed to read code file.", variant: "destructive" });
+        };
+        reader.readAsText(file);
+    };
+
+    const handleRemoveFile = () => {
+        setUploadedFile(null);
+        setAgentCode('');
+        if (fileInputRef.current) fileInputRef.current.value = '';
+    };
 
     async function handleAutoGenerate() {
         if (!description) {
@@ -55,14 +86,14 @@ function CreateAgentContent() {
         setIsGenerating(true);
         try {
             const result = await generateAgentConfiguration({ description });
-            setPromptTemplate(result.promptTemplate);
+            setAgentCode(result.promptTemplate);
 
             const nameMatch = result.agentConfig.match(/name: (.*)/);
             if (nameMatch) setRepoName(nameMatch[1].toLowerCase().replace(/\s+/g, '-'));
 
-            toast({ title: "Success", description: "Agent configuration generated successfully!" });
+            toast({ title: "Success", description: "Agent code scaffolding generated!" });
         } catch (error) {
-            toast({ title: "Error", description: "Failed to generate configuration.", variant: "destructive" });
+            toast({ title: "Error", description: "Failed to generate code.", variant: "destructive" });
         } finally {
             setIsGenerating(false);
         }
@@ -78,6 +109,15 @@ function CreateAgentContent() {
             return;
         }
 
+        if (!agentCode.trim()) {
+            toast({
+                title: "Agent Code Required",
+                description: "Please upload a code file or paste your agent code.",
+                variant: "destructive"
+            });
+            return;
+        }
+
         setIsCreating(true);
 
         try {
@@ -88,7 +128,7 @@ function CreateAgentContent() {
                     repoName: repoName.trim(),
                     description: description.trim(),
                     visibility,
-                    promptTemplate,
+                    promptTemplate: agentCode,
                     providerToken: profile?.providerToken,
                     ownerUsername: currentUser,
                 });
@@ -104,7 +144,7 @@ function CreateAgentContent() {
                 owner: currentUser,
                 ownerAvatar: profile?.avatarUrl,
                 description: description || `AI Agent for ${repoName}`,
-                tags: ['Custom', 'Autonomous'],
+                tags: ['Custom', 'Uploaded Code'],
                 type: 'input-output',
                 rating: 5.0,
                 runs: '0',
@@ -115,17 +155,17 @@ function CreateAgentContent() {
                 category: 'General',
                 updatedAt: 'Just now',
                 githubUrl: githubUrl || `https://github.com/${currentUser}/${repoName}`,
-                readme: `# ${repoName}\n\n${description || "No description provided."}\n\n## Prompt Template\n\`\`\`\n${promptTemplate || "System: You are an autonomous AI agent."}\n\`\`\``,
-                promptTemplate: promptTemplate || "System: You are an autonomous AI agent.",
-                configYaml: `name: ${repoName}\ntype: interactive\nowner: ${currentUser}`,
-                metadataJson: `{"version": "1.0.0", "syncedWithGithub": true}`,
-                usageCode: `// Example usage\nimport { runAgent } from './index';\n\nconst response = await runAgent({ input: "your task" });`,
+                readme: `# ${repoName}\n\n${description || "No description provided."}\n\n## Agent Source Code (${uploadedFile?.name || 'index.ts'})\n\`\`\`ts\n${agentCode}\n\`\`\``,
+                promptTemplate: agentCode,
+                configYaml: `name: ${repoName}\ntype: code-agent\nowner: ${currentUser}`,
+                metadataJson: `{"version": "1.0.0", "syncedWithGithub": true, "filename": "${uploadedFile?.name || 'index.ts'}"}`,
+                usageCode: agentCode,
             };
 
             addAgent(newAgent);
 
             toast({
-                title: "Agent Repository Created!",
+                title: "Agent Created!",
                 description: githubUrl 
                   ? `AgentSpace & GitHub repository synced at ${githubUrl}` 
                   : `Successfully created ${newAgent.name}.`,
@@ -146,8 +186,11 @@ function CreateAgentContent() {
     return (
         <div className="container mx-auto px-4 py-12 max-w-4xl">
             <div className="space-y-2 mb-10">
-                <h1 className="text-3xl font-headline font-bold">Create a New Agent</h1>
-                <p className="text-muted-foreground">Build, configure, and automatically synchronize your agent repository with GitHub.</p>
+                <h1 className="text-3xl font-headline font-bold flex items-center gap-3">
+                    <Code className="h-8 w-8 text-primary" />
+                    Create a New Agent
+                </h1>
+                <p className="text-muted-foreground">Upload your agent code file, configure repository settings, and automatically sync with GitHub.</p>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -201,7 +244,7 @@ function CreateAgentContent() {
                                     </span>
                                 </div>
                                 <p className="text-xs text-muted-foreground">
-                                    When enabled, AgentSpace will automatically create a new repository on GitHub and commit your agent scaffolding files (`README.md`, `agent.json`, `index.ts`).
+                                    When enabled, AgentSpace will automatically create a new repository on GitHub and commit your uploaded agent code files (`index.ts`, `agent.json`, `README.md`).
                                 </p>
                                 <div className="flex items-center space-x-2 pt-2">
                                     <Checkbox
@@ -250,16 +293,61 @@ function CreateAgentContent() {
                             </RadioGroup>
                         </div>
 
+                        {/* File Upload Section replacing Prompt Template */}
                         <div className="space-y-4 pt-2">
-                            <Label htmlFor="prompt">Prompt Template</Label>
-                            <Textarea
-                                id="prompt"
-                                placeholder="The master system prompt and instructions for your agent..."
-                                className="min-h-[180px] font-mono text-xs bg-background/50 border-border focus:border-primary rounded-xl"
-                                value={promptTemplate}
-                                onChange={(e) => setPromptTemplate(e.target.value)}
-                            />
-                            <p className="text-[10px] text-muted-foreground italic">Tip: Use {"{{variable}}"} syntax for dynamic user inputs.</p>
+                            <div className="flex items-center justify-between">
+                                <Label className="text-sm font-bold flex items-center gap-2">
+                                    <FileCode className="h-4 w-4 text-primary" />
+                                    Upload Agent Code
+                                </Label>
+                                <span className="text-xs text-muted-foreground">Supports .ts, .js, .py, .json, .txt, .md</span>
+                            </div>
+
+                            {!uploadedFile ? (
+                                <div
+                                    onClick={() => fileInputRef.current?.click()}
+                                    className="border-2 border-dashed border-muted hover:border-primary/50 bg-background/50 hover:bg-primary/5 rounded-2xl p-8 flex flex-col items-center justify-center gap-3 cursor-pointer transition-all group"
+                                >
+                                    <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center text-primary group-hover:scale-110 transition-transform">
+                                        <UploadCloud className="h-6 w-6" />
+                                    </div>
+                                    <div className="text-center space-y-1">
+                                        <p className="text-sm font-bold text-foreground">Click to upload your agent code file</p>
+                                        <p className="text-xs text-muted-foreground">or drag and drop your script file here (max 5MB)</p>
+                                    </div>
+                                    <input
+                                        type="file"
+                                        ref={fileInputRef}
+                                        className="hidden"
+                                        accept=".ts,.js,.py,.json,.txt,.md,.sh"
+                                        onChange={handleFileUpload}
+                                    />
+                                </div>
+                            ) : (
+                                <div className="flex items-center justify-between p-4 bg-primary/10 border border-primary/30 rounded-xl">
+                                    <div className="flex items-center gap-3">
+                                        <div className="h-10 w-10 rounded-lg bg-primary/20 flex items-center justify-center text-primary">
+                                            <FileText className="h-5 w-5" />
+                                        </div>
+                                        <div>
+                                            <p className="text-sm font-bold text-foreground flex items-center gap-1.5">
+                                                {uploadedFile.name}
+                                                <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                                            </p>
+                                            <p className="text-[11px] text-muted-foreground">{(uploadedFile.size / 1024).toFixed(1)} KB — Code file attached and ready</p>
+                                        </div>
+                                    </div>
+                                    <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        onClick={handleRemoveFile}
+                                        className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                                        title="Remove file"
+                                    >
+                                        <X className="h-4 w-4" />
+                                    </Button>
+                                </div>
+                            )}
                         </div>
 
                         <div className="pt-4">
@@ -276,7 +364,7 @@ function CreateAgentContent() {
                                     </>
                                 ) : (
                                     <>
-                                        Create & Sync Agent
+                                        Create & Sync Agent Code
                                         <GitBranch className="h-4 w-4 ml-1" />
                                     </>
                                 )}
@@ -290,10 +378,10 @@ function CreateAgentContent() {
                         <CardHeader className="pb-3">
                             <CardTitle className="text-base flex items-center gap-2">
                                 <Sparkles className="h-4 w-4 text-primary" />
-                                AI Scaffolding Generator
+                                AI Code Generator
                             </CardTitle>
                             <CardDescription className="text-xs">
-                                Describe your agent concept, and let AI generate the prompt and repo configuration.
+                                Describe your agent concept, and let AI generate the initial agent code.
                             </CardDescription>
                         </CardHeader>
                         <CardContent className="space-y-4">
@@ -315,11 +403,11 @@ function CreateAgentContent() {
                                 {isGenerating ? (
                                     <>
                                         <Loader2 className="h-3 w-3 animate-spin" />
-                                        Generating...
+                                        Generating Code...
                                     </>
                                 ) : (
                                     <>
-                                        Auto-Generate Configuration
+                                        Auto-Generate Agent Code
                                         <Sparkles className="h-3 w-3" />
                                     </>
                                 )}
@@ -331,21 +419,21 @@ function CreateAgentContent() {
                         <CardHeader className="pb-3">
                             <CardTitle className="text-sm font-bold flex items-center gap-2">
                                 <Shield className="h-4 w-4 text-emerald-500" />
-                                GitHub Sync Benefits
+                                Code & GitHub Sync Benefits
                             </CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-3 text-xs text-muted-foreground">
                             <div className="flex gap-2">
                                 <Plus className="h-3 w-3 shrink-0 mt-0.5 text-primary" />
-                                <p>Automatic repo creation under your GitHub account.</p>
+                                <p>Upload custom code scripts directly into AgentSpace.</p>
                             </div>
                             <div className="flex gap-2">
                                 <Plus className="h-3 w-3 shrink-0 mt-0.5 text-primary" />
-                                <p>Commits initial <code className="text-foreground">README.md</code>, <code className="text-foreground">agent.json</code>, and <code className="text-foreground">index.ts</code> code.</p>
+                                <p>Commits your code file directly to GitHub as <code className="text-foreground">index.ts</code>.</p>
                             </div>
                             <div className="flex gap-2">
                                 <Plus className="h-3 w-3 shrink-0 mt-0.5 text-primary" />
-                                <p>Seamless version control and collaboration on AgentSpace.</p>
+                                <p>Full version control and instant repository deployment.</p>
                             </div>
                         </CardContent>
                     </Card>
