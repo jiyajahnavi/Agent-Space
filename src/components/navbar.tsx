@@ -80,15 +80,15 @@ export function Navbar() {
                   >
                     <div className="relative">
                       <Avatar className="h-7 w-7 border border-primary/30">
-                        <AvatarImage src={profile.avatarUrl} alt={profile.fullName} />
+                        <AvatarImage src={profile?.avatarUrl} alt={profile?.fullName || 'User'} />
                         <AvatarFallback className="bg-primary/20 text-primary text-xs font-bold">
-                          {getInitials(profile.fullName)}
+                          {getInitials(profile?.fullName)}
                         </AvatarFallback>
                       </Avatar>
                       <span className="absolute bottom-0 right-0 w-2 h-2 bg-emerald-500 rounded-full ring-2 ring-background" />
                     </div>
                     <span className="text-xs font-semibold max-w-[100px] truncate hidden sm:inline-block">
-                      {profile.fullName.split(' ')[0]}
+                      {profile?.fullName ? profile.fullName.split(' ')[0] : 'User'}
                     </span>
                     <ChevronDown className="w-3.5 h-3.5 text-muted-foreground group-hover:text-foreground transition-transform group-data-[state=open]:rotate-180" />
                   </Button>
@@ -96,10 +96,10 @@ export function Navbar() {
                 <DropdownMenuContent align="start" className="w-56 p-1.5 rounded-xl mt-1 shadow-xl bg-card border-border/80">
                   <DropdownMenuLabel className="font-normal p-2 pb-1.5">
                     <div className="flex flex-col space-y-1">
-                      <p className="text-sm font-semibold leading-none">{profile.fullName}</p>
-                      <p className="text-xs leading-none text-muted-foreground">@{profile.username}</p>
+                      <p className="text-sm font-semibold leading-none">{profile?.fullName || 'User'}</p>
+                      <p className="text-xs leading-none text-muted-foreground">@{profile?.username || 'user'}</p>
                       <div className="mt-1.5 inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-primary/10 text-primary w-fit">
-                        {profile.provider === 'google' ? 'Google OAuth Account' : profile.provider === 'github' ? 'GitHub OAuth Account' : profile.email}
+                        {profile?.provider === 'google' ? 'Google OAuth Account' : profile?.provider === 'github' ? 'GitHub OAuth Account' : profile?.email || 'Authenticated User'}
                       </div>
                     </div>
                   </DropdownMenuLabel>

@@ -1,7 +1,9 @@
 /**
- * @fileOverview Implementation of the Legal Summarizer / Contract Analyzer logic.
- * Detects risky legal keywords and provides structured risk assessments.
+ * @fileOverview Implementation of the Legal Summarizer / Contract Analyzer.
+ * Uses a Hugging Face-hosted LLM for real clause-level risk assessment.
  */
+import 'server-only';
+import { chatCompleteJSON } from '@/lib/huggingface';
 
 export interface ContractAnalysisResult {
   summary: string;
@@ -10,54 +12,43 @@ export interface ContractAnalysisResult {
   explanation: string;
 }
 
-const RISKY_KEYWORDS = [
-  'liability', 
-  'penalty', 
-  'termination', 
-  'fees', 
-  'indemnity', 
-  'warranties', 
-  'breach', 
-  'litigation',
-  'uncapped',
-  'non-compete'
-];
+const SYSTEM_PROMPT = `You are an experienced contracts attorney reviewing an agreement for a client (not giving formal legal advice, but a practical risk read).
 
-export async function runContractAnalyzer(input: string, apiKey?: string): Promise<ContractAnalysisResult> {
-  // Simulate processing delay for "Legal AI Review" feel
-  await new Promise(resolve => setTimeout(resolve, 2000));
+Given the contract text, identify actual risky clauses (liability, indemnity, termination, penalties, non-compete, IP assignment, uncapped damages, auto-renewal, jurisdiction, etc.) with real quotes or close paraphrases from the text.
 
-  const lowerInput = input.toLowerCase();
-  const isFile = input.includes('[FILE:');
-  const detectedRisks = RISKY_KEYWORDS.filter(kw => lowerInput.includes(kw));
-  
-  let riskLevel: 'Low' | 'Medium' | 'High' = 'Low';
-  if (detectedRisks.length > 4) riskLevel = 'High';
-  else if (detectedRisks.length > 1) riskLevel = 'Medium';
+Return ONLY a valid JSON object with exactly these keys:
+{
+  "summary": "<2-3 sentences describing what kind of agreement this is and its overall shape>",
+  "riskLevel": "<'Low' | 'Medium' | 'High', based on how one-sided/aggressive the risky clauses are>",
+  "riskyClauses": ["specific risky clause descriptions, each naming the clause type and quoting/paraphrasing the relevant text"],
+  "explanation": "<2-4 sentences explaining the reasoning behind the risk level and what to negotiate or watch out for>"
+}
+If no meaningful risk is found, riskyClauses should be ["No significant risk clauses detected in the provided text."] and riskLevel "Low".
+No markdown, no commentary outside the JSON.`;
 
-  const riskyClauses = detectedRisks.map(risk => {
-    // Extract a small snippet around the keyword for context
-    const index = lowerInput.indexOf(risk);
-    const start = Math.max(0, index - 30);
-    const end = Math.min(input.length, index + 70);
-    let snippet = input.substring(start, end).replace(/\n/g, ' ').trim();
-    return `Review required for "${risk.toUpperCase()}": "...${snippet}..."`;
-  });
-
-  const summary = isFile 
-    ? "The uploaded document has been scanned. It appears to be a formal agreement containing standard commercial terms." 
-    : "The provided text has been analyzed for legal exposure. It contains several clauses regarding rights, obligations, and potential liabilities.";
-
-  let explanation = "Our static analysis identifies specific keywords often associated with legal risk. A 'Medium' or 'High' risk level suggests that the contract may contain lopsided liability or aggressive termination rights.";
-
-  if (apiKey) {
-    explanation += " ✨ [AI ENHANCED] Gemini has reviewed the context of these clauses. The 'Termination for Convenience' clause is notably one-sided and should be negotiated to be reciprocal.";
+export async function runContractAnalyzer(input: string): Promise<ContractAnalysisResult> {
+  const trimmed = input.trim();
+  if (!trimmed || trimmed.length < 20) {
+    throw new Error('Please provide contract text or upload a PDF with readable content before running the analyzer.');
   }
 
+  const result = await chatCompleteJSON<ContractAnalysisResult>(
+    [
+      { role: 'system', content: SYSTEM_PROMPT },
+      { role: 'user', content: `Contract text:\n\n${trimmed.slice(0, 14000)}` },
+    ],
+    { temperature: 0.25, maxTokens: 1800 }
+  );
+
+  const riskLevel: ContractAnalysisResult['riskLevel'] =
+    result.riskLevel === 'High' || result.riskLevel === 'Medium' || result.riskLevel === 'Low'
+      ? result.riskLevel
+      : 'Low';
+
   return {
-    summary,
+    summary: result.summary || '',
     riskLevel,
-    riskyClauses: riskyClauses.length > 0 ? riskyClauses : ["No high-risk keywords detected in the provided text."],
-    explanation
+    riskyClauses: Array.isArray(result.riskyClauses) ? result.riskyClauses : [],
+    explanation: result.explanation || '',
   };
 }

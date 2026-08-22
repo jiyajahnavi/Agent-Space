@@ -1,7 +1,9 @@
 /**
- * @fileOverview Implementation of the Code Debugger Agent logic.
- * Features smarter heuristic checks and simulated AI code fixing.
+ * @fileOverview Implementation of the Code Debugger Agent.
+ * Sends code to a Hugging Face-hosted LLM for real static analysis, bug fixes, and explanation.
  */
+import 'server-only';
+import { chatCompleteJSON } from '@/lib/huggingface';
 
 export interface DebugResult {
   fixedCode: string;
@@ -11,120 +13,40 @@ export interface DebugResult {
   errorCount: number;
 }
 
-const COMMON_TYPOS: Record<string, string> = {
-  'functon': 'function',
-  'retun': 'return',
-  'cont ': 'const ',
-  'export defalt': 'export default',
-  'consoe.log': 'console.log',
-  'widow.': 'window.',
-};
+const SYSTEM_PROMPT = `You are a senior software engineer performing a careful code review and bug fix pass. You support any mainstream language (JavaScript, TypeScript, Python, Java, C++, Go, etc.) and should detect the language automatically from the code.
 
-export async function runCodeDebugger(input: string, apiKey?: string): Promise<DebugResult> {
-  // Simulate processing delay for "thinking" feel
-  await new Promise(resolve => setTimeout(resolve, 1000));
+Analyze the given code for: syntax errors, logic bugs, off-by-one errors, null/undefined handling, type mismatches, unhandled edge cases, and bad practices (e.g. loose equality, unclosed brackets/quotes, missing colons in Python, etc.).
 
-  const errorsFound: string[] = [];
-  let fixedCode = input;
+Return ONLY a valid JSON object with exactly these keys:
+{
+  "fixedCode": "<the corrected, complete code, preserving the original structure and style as much as possible>",
+  "errorsFound": ["specific description of each issue found, referencing line numbers or code snippets where possible"],
+  "explanation": "<2-4 sentences summarizing what was wrong and what you changed>",
+  "improvements": ["2-4 additional best-practice suggestions beyond the bug fixes"],
+  "errorCount": <integer, number of distinct issues found>
+}
+If the code has no bugs, set errorsFound to ["No issues found - code is syntactically and logically sound."], errorCount to 0, and fixedCode equal to the original code.
+No markdown, no commentary outside the JSON.`;
 
-  // 1. Unclosed Quotes
-  const lines = input.split('\n');
-  lines.forEach((line, index) => {
-    const doubleQuotes = (line.match(/"/g) || []).length;
-    const singleQuotes = (line.match(/'/g) || []).length;
-    
-    if (doubleQuotes % 2 !== 0) {
-      errorsFound.push(`Line ${index + 1}: Unclosed double quote (") detected.`);
-      // Simple fix for demo: append missing quote if it's a simple case
-      if (line.trim().startsWith('print(') || line.trim().startsWith('console.log(')) {
-          fixedCode = fixedCode.replace(line, line + '"');
-      }
-    }
-    if (singleQuotes % 2 !== 0) {
-      errorsFound.push(`Line ${index + 1}: Unclosed single quote (') detected.`);
-      if (line.trim().startsWith('print(') || line.trim().startsWith('console.log(')) {
-          fixedCode = fixedCode.replace(line, line + "'");
-      }
-    }
-  });
-
-  // 2. Keyword Typo Detection
-  Object.entries(COMMON_TYPOS).forEach(([typo, fix]) => {
-    if (input.includes(typo)) {
-      errorsFound.push(`Typo detected: "${typo}" corrected to "${fix}"`);
-      fixedCode = fixedCode.replaceAll(typo, fix);
-    }
-  });
-
-  // 3. Bracket/Parentheses Mismatch
-  const pairs = [
-    { open: '{', close: '}', name: 'curly braces' },
-    { open: '(', close: ')', name: 'parentheses' },
-    { open: '[', close: ']', name: 'square brackets' }
-  ];
-
-  pairs.forEach(pair => {
-    const openCount = (input.match(new RegExp('\\' + pair.open, 'g')) || []).length;
-    const closeCount = (input.match(new RegExp('\\' + pair.close, 'g')) || []).length;
-    if (openCount !== closeCount) {
-      const diff = openCount - closeCount;
-      errorsFound.push(`Mismatched ${pair.name}: found ${openCount} open and ${closeCount} closed.`);
-      if (diff > 0) {
-        // Only append if it looks like a simple missing closing bracket
-        if (!fixedCode.endsWith(pair.close.repeat(diff))) {
-            fixedCode += pair.close.repeat(diff);
-        }
-      }
-    }
-  });
-
-  // 4. Python-style missing colons (very simple heuristic)
-  const pythonKeywords = ['if', 'else', 'for', 'while', 'def', 'class'];
-  lines.forEach((line, index) => {
-    const trimmed = line.trim();
-    pythonKeywords.forEach(kw => {
-      if (trimmed.startsWith(kw + ' ') || trimmed === kw) {
-        if (!trimmed.endsWith(':') && !trimmed.endsWith('{') && !trimmed.endsWith(')')) {
-          errorsFound.push(`Line ${index + 1}: Potential missing colon (:) for '${kw}' statement.`);
-          fixedCode = fixedCode.replace(line, line + ':');
-        }
-      }
-    });
-  });
-
-  // 5. Strict Equality Check
-  if (input.includes(' == ') && !input.includes(' === ')) {
-    errorsFound.push("Loose equality (==) found. In modern JS/TS, strict equality (===) is preferred.");
-    fixedCode = fixedCode.replace(/ == /g, ' === ');
+export async function runCodeDebugger(input: string): Promise<DebugResult> {
+  const trimmed = input.trim();
+  if (!trimmed) {
+    throw new Error('Please paste some code to debug.');
   }
 
-  // Final count check
-  const actualErrorCount = errorsFound.length;
-  
-  if (actualErrorCount === 0) {
-    errorsFound.push("No obvious syntax errors found via static analysis.");
-  }
-
-  // Generate Explanation
-  let explanation = actualErrorCount > 0 
-    ? `Analysis complete. Found ${actualErrorCount} potential issue(s) that were automatically corrected.`
-    : "Analysis complete. Your code looks syntactically sound.";
-    
-  if (apiKey) {
-    explanation += " ✨ AI Enhanced: I've also verified the logical flow and confirmed no hidden race conditions.";
-  }
-
-  const improvements = [
-    "🛠️ Refactor nested logic into smaller, testable functions.",
-    "🛡️ Use descriptive variable names to improve readability.",
-    "⚡ Optimize loops by using built-in array methods like .map() or .filter()."
-  ];
+  const result = await chatCompleteJSON<DebugResult>(
+    [
+      { role: 'system', content: SYSTEM_PROMPT },
+      { role: 'user', content: `Code to review:\n\n\`\`\`\n${trimmed.slice(0, 12000)}\n\`\`\`` },
+    ],
+    { temperature: 0.2, maxTokens: 2000 }
+  );
 
   return {
-    fixedCode,
-    errorsFound,
-    explanation,
-    improvements,
-    errorCount: actualErrorCount
+    fixedCode: result.fixedCode || trimmed,
+    errorsFound: Array.isArray(result.errorsFound) ? result.errorsFound : [],
+    explanation: result.explanation || '',
+    improvements: Array.isArray(result.improvements) ? result.improvements : [],
+    errorCount: Math.max(0, Math.round(Number(result.errorCount) || 0)),
   };
 }

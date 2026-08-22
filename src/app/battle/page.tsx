@@ -12,16 +12,14 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { toast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { runAgent } from '@/lib/core/runAgent';
+import { runAgentClient } from '@/lib/runAgentClient';
 import { OutputDisplay } from '@/components/agent/OutputDisplay';
-import { ApiKeyInput } from '@/components/agent/ApiKeyInput';
 import { cn } from '@/lib/utils';
 import { useAgents } from '@/context/agents-context';
 
 export default function BattleModePage() {
     const { agents } = useAgents();
     const [prompt, setPrompt] = useState('');
-    const [apiKey, setApiKey] = useState('');
     const [file, setFile] = useState<File | null>(null);
     const [agentAId, setAgentAId] = useState(agents[0]?.id || '');
     const [agentBId, setAgentBId] = useState(agents[2]?.id || agents[1]?.id || '');
@@ -59,18 +57,30 @@ export default function BattleModePage() {
         setResponseA(null);
         setResponseB(null);
 
-        const executionInput = file ? `[FILE: ${file.name}] ${prompt}` : prompt;
-
         try {
             const [resultA, resultB] = await Promise.all([
-                runAgent(agentAId, executionInput, apiKey),
-                runAgent(agentBId, executionInput, apiKey)
+                runAgentClient({
+                    agentId: agentAId,
+                    input: prompt,
+                    file,
+                    agentName: agentA?.name,
+                    agentDescription: agentA?.description,
+                    agentPromptTemplate: agentA?.promptTemplate,
+                }),
+                runAgentClient({
+                    agentId: agentBId,
+                    input: prompt,
+                    file,
+                    agentName: agentB?.name,
+                    agentDescription: agentB?.description,
+                    agentPromptTemplate: agentB?.promptTemplate,
+                }),
             ]);
 
             setResponseA(resultA);
             setResponseB(resultB);
-        } catch (error) {
-            toast({ title: "Error", description: "The battle failed due to an engine error.", variant: "destructive" });
+        } catch (error: any) {
+            toast({ title: "Error", description: error?.message || "The battle failed due to an engine error.", variant: "destructive" });
         } finally {
             setIsFighting(false);
         }
@@ -156,7 +166,10 @@ export default function BattleModePage() {
                         </div>
 
                         <div className="space-y-6 self-end">
-                            <ApiKeyInput value={apiKey} onChange={setApiKey} />
+                            <div className="flex items-center gap-2 text-[11px] text-muted-foreground bg-muted/20 rounded-lg px-3 py-2">
+                                <Zap className="h-3.5 w-3.5 text-primary shrink-0" />
+                                Both agents run live on Hugging Face-hosted models — no API key needed.
+                            </div>
                             <Button
                                 onClick={handleBattle}
                                 className="w-full bg-primary hover:bg-primary/90 h-14 text-lg gap-2 shadow-xl shadow-primary/20"

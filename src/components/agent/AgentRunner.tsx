@@ -1,31 +1,35 @@
 /**
- * @fileOverview Orchestrates the agent execution flow including input, API keys, and output.
+ * @fileOverview Orchestrates the agent execution flow: input capture, calling the
+ * server-side /api/agents/run route (which talks to Hugging Face), and rendering output.
  */
 import React, { useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Play, Terminal, Sparkles, Loader2, FileUp, FileText, X } from 'lucide-react';
-import { ApiKeyInput } from './ApiKeyInput';
 import { OutputDisplay } from './OutputDisplay';
-import { runAgent } from '@/lib/core/runAgent';
+import { runAgentClient } from '@/lib/runAgentClient';
 import { toast } from '@/hooks/use-toast';
-import { agentRegistry } from '@/lib/agents/agentRegistry';
+import { useAgents } from '@/context/agents-context';
 
 interface AgentRunnerProps {
     agentId: string;
 }
 
+// Agents whose input is a document (PDF upload with optional extra text context).
+const FILE_INPUT_AGENTS = new Set(['resume-analyzer', 'resume-analyzer-devraj', 'legal-summarizer']);
+
 export function AgentRunner({ agentId }: AgentRunnerProps) {
+    const { agents } = useAgents();
+    const agentMeta = agents.find(a => a.id === agentId);
+
     const [input, setInput] = useState('');
     const [file, setFile] = useState<File | null>(null);
-    const [apiKey, setApiKey] = useState('');
     const [isProcessing, setIsProcessing] = useState(false);
     const [output, setOutput] = useState<any>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
-    const agent = agentRegistry[agentId];
-    const isFileInput = agent?.inputType === 'file';
+    const isFileInput = FILE_INPUT_AGENTS.has(agentId);
 
     const handleRun = async () => {
         if (!isFileInput && !input.trim()) {
@@ -34,7 +38,7 @@ export function AgentRunner({ agentId }: AgentRunnerProps) {
         }
 
         if (isFileInput && !file && !input.trim()) {
-            toast({ title: "File Required", description: "Please upload a resume or provide text content.", variant: "destructive" });
+            toast({ title: "File Required", description: "Please upload a document or provide text content.", variant: "destructive" });
             return;
         }
 
@@ -42,9 +46,14 @@ export function AgentRunner({ agentId }: AgentRunnerProps) {
         setOutput(null);
 
         try {
-            // For demo purposes, we pass the file name if it's a file, otherwise the text
-            const executionInput = file ? `[FILE: ${file.name}] ${input}` : input;
-            const result = await runAgent(agentId, executionInput, apiKey);
+            const result = await runAgentClient({
+                agentId,
+                input,
+                file,
+                agentName: agentMeta?.name,
+                agentDescription: agentMeta?.description,
+                agentPromptTemplate: agentMeta?.promptTemplate,
+            });
             setOutput(result);
         } catch (error: any) {
             toast({ title: "Execution Failed", description: error.message, variant: "destructive" });
@@ -76,7 +85,7 @@ export function AgentRunner({ agentId }: AgentRunnerProps) {
                 <CardContent className="flex-1 p-6 space-y-6">
                     {isFileInput ? (
                         <div className="space-y-4">
-                            <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Upload Resume (PDF)</Label>
+                            <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Upload Document (PDF)</Label>
                             {!file ? (
                                 <div
                                     onClick={() => fileInputRef.current?.click()}
@@ -134,7 +143,10 @@ export function AgentRunner({ agentId }: AgentRunnerProps) {
                             />
                         </div>
                     )}
-                    <ApiKeyInput value={apiKey} onChange={setApiKey} />
+                    <div className="flex items-center gap-2 text-[11px] text-muted-foreground bg-muted/20 rounded-lg px-3 py-2">
+                        <Sparkles className="h-3.5 w-3.5 text-primary shrink-0" />
+                        Powered by a Hugging Face-hosted model. Runs server-side — no API key needed from you.
+                    </div>
                 </CardContent>
                 <CardFooter className="border-t p-4 flex justify-end">
                     <Button onClick={handleRun} disabled={isProcessing} className="gap-2 bg-primary hover:bg-primary/90">
@@ -165,6 +177,11 @@ export function AgentRunner({ agentId }: AgentRunnerProps) {
                         <div className="animate-in fade-in slide-in-from-top-2 duration-300">
                             <OutputDisplay output={output} />
                         </div>
+                    ) : isProcessing ? (
+                        <div className="h-full flex flex-col items-center justify-center text-center text-muted-foreground/60 py-12 gap-3">
+                            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                            <p className="text-sm">Running inference on Hugging Face...</p>
+                        </div>
                     ) : (
                         <div className="h-full flex flex-col items-center justify-center text-center text-muted-foreground/40 py-12">
                             <Terminal className="h-12 w-12 mb-4 opacity-20" />
@@ -177,7 +194,6 @@ export function AgentRunner({ agentId }: AgentRunnerProps) {
     );
 }
 
-// Helper to avoid build error since Label is used
 function Label({ children, className }: { children: React.ReactNode, className?: string }) {
     return <label className={`text-sm font-medium leading-none ${className}`}>{children}</label>;
 }

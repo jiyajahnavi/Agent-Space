@@ -17,7 +17,21 @@ import { useAgents } from '@/context/agents-context';
 export default function AgentDetailPage() {
     const params = useParams();
     const { agents } = useAgents();
-    const agent = agents.find(a => a.id === params.id) || agents[0];
+    const agent = (agents && agents.length > 0)
+        ? (agents.find(a => a.id === params?.id) || agents[0])
+        : null;
+
+    if (!agent) {
+        return (
+            <div className="container mx-auto px-4 py-20 text-center space-y-4">
+                <h2 className="text-2xl font-bold">Agent Not Found</h2>
+                <p className="text-muted-foreground">The requested agent could not be found.</p>
+                <Link href="/explore">
+                    <Button>Back to Explore</Button>
+                </Link>
+            </div>
+        );
+    }
 
     const [userInput, setUserInput] = useState('');
     const [isProcessing, setIsProcessing] = useState(false);

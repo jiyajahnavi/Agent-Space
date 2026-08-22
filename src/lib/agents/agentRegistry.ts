@@ -1,6 +1,9 @@
 /**
  * @fileOverview Central registry for all AI agents and their execution logic.
+ * All run() functions call Hugging Face-hosted models server-side (see src/lib/huggingface.ts).
+ * This module must only be imported from server code (API routes), never from a client component.
  */
+import 'server-only';
 import { runResumeAnalyzer } from './resumeAnalyzer';
 import { runCodeDebugger } from './codeDebugger';
 import { runLinkedInGenerator } from './linkedinGenerator';
@@ -12,7 +15,7 @@ export interface AgentRegistryEntry {
   name: string;
   description: string;
   inputType: 'text' | 'file';
-  run: (input: string, apiKey: string) => Promise<any>;
+  run: (input: string) => Promise<any>;
 }
 
 export const agentRegistry: Record<string, AgentRegistryEntry> = {
@@ -21,41 +24,41 @@ export const agentRegistry: Record<string, AgentRegistryEntry> = {
     name: 'Resume Analyzer',
     description: 'Analyze resumes and generate ATS score with suggestions',
     inputType: 'file',
-    run: (input, apiKey) => runResumeAnalyzer(input, apiKey),
+    run: (input) => runResumeAnalyzer(input),
   },
   'code-debugger': {
     id: 'code-debugger',
     name: 'Code Debugger',
     description: 'Identifies bugs and suggests fixes with detailed explanations',
     inputType: 'text',
-    run: (input, apiKey) => runCodeDebugger(input, apiKey),
+    run: (input) => runCodeDebugger(input),
   },
   'code-debugger-pro': {
     id: 'code-debugger-pro',
     name: 'Code Debugger Pro',
     description: 'Advanced Logic Fixer',
     inputType: 'text',
-    run: (input, apiKey) => runCodeDebugger(input, apiKey),
+    run: (input) => runCodeDebugger(input),
   },
   'linkedin-poster': {
     id: 'linkedin-poster',
     name: 'LinkedIn Poster',
     description: 'Engagement Growth Tool',
     inputType: 'text',
-    run: (input, apiKey) => runLinkedInGenerator(input, apiKey),
+    run: (input) => runLinkedInGenerator(input),
   },
   'research-agent': {
     id: 'research-agent',
     name: 'Research Agent',
     description: 'Deep multi-step reasoning and structured analysis engine',
     inputType: 'text',
-    run: (input, apiKey) => runResearchAgent(input, apiKey),
+    run: (input) => runResearchAgent(input),
   },
   'legal-summarizer': {
     id: 'legal-summarizer',
     name: 'Legal Summarizer',
     description: 'Contract Risk Analysis',
     inputType: 'file',
-    run: (input, apiKey) => runContractAnalyzer(input, apiKey),
+    run: (input) => runContractAnalyzer(input),
   }
 };

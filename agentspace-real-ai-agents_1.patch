@@ -1,0 +1,1844 @@
+diff --git a/package-lock.json b/package-lock.json
+index e44876d..f9eb217 100644
+--- a/package-lock.json
++++ b/package-lock.json
+@@ -42,17 +42,20 @@
+         "lucide-react": "^0.475.0",
+         "next": "15.5.9",
+         "patch-package": "^8.0.0",
++        "pdf-parse": "^1.1.1",
+         "react": "^19.2.1",
+         "react-day-picker": "^9.11.3",
+         "react-dom": "^19.2.1",
+         "react-hook-form": "^7.54.2",
+         "recharts": "^2.15.1",
++        "server-only": "^0.0.1",
+         "tailwind-merge": "^3.0.1",
+         "tailwindcss-animate": "^1.0.7",
+         "zod": "^3.24.2"
+       },
+       "devDependencies": {
+         "@types/node": "^20",
++        "@types/pdf-parse": "^1.1.4",
+         "@types/react": "^19.2.1",
+         "@types/react-dom": "^19.2.1",
+         "cross-env": "^10.1.0",
+@@ -4763,6 +4766,7 @@
+       "version": "0.11.0",
+       "resolved": "https://registry.npmjs.org/@pkgjs/parseargs/-/parseargs-0.11.0.tgz",
+       "integrity": "sha512-+1VkjdD0QBLPodGrJUeqarH8VAIvQODIbwh9XpP5Syisf7YoQgsJKPNFoqqLQlu+VQ/tVSshMR6loPMn8U+dPg==",
++      "dev": true,
+       "license": "MIT",
+       "optional": true,
+       "engines": {
+@@ -6587,6 +6591,16 @@
+         "undici-types": "~6.21.0"
+       }
+     },
++    "node_modules/@types/pdf-parse": {
++      "version": "1.1.5",
++      "resolved": "https://registry.npmjs.org/@types/pdf-parse/-/pdf-parse-1.1.5.tgz",
++      "integrity": "sha512-kBfrSXsloMnUJOKi25s3+hRmkycHfLK6A09eRGqF/N8BkQoPUmaCr+q8Cli5FnfohEz/rsv82zAiPz/LXtOGhA==",
++      "dev": true,
++      "license": "MIT",
++      "dependencies": {
++        "@types/node": "*"
++      }
++    },
+     "node_modules/@types/pg": {
+       "version": "8.6.1",
+       "resolved": "https://registry.npmjs.org/@types/pg/-/pg-8.6.1.tgz",
+@@ -10966,6 +10980,12 @@
+         "node": ">=10.5.0"
+       }
+     },
++    "node_modules/node-ensure": {
++      "version": "0.0.0",
++      "resolved": "https://registry.npmjs.org/node-ensure/-/node-ensure-0.0.0.tgz",
++      "integrity": "sha512-DRI60hzo2oKN1ma0ckc6nQWlHU69RH6xN0sjQTjMpChPfTYvKZdcQFfdYK2RWbJcKyUizSIy/l8OTGxMAM1QDw==",
++      "license": "MIT"
++    },
+     "node_modules/node-fetch": {
+       "version": "3.3.2",
+       "resolved": "https://registry.npmjs.org/node-fetch/-/node-fetch-3.3.2.tgz",
+@@ -11321,6 +11341,22 @@
+         "through": "~2.3"
+       }
+     },
++    "node_modules/pdf-parse": {
++      "version": "1.1.4",
++      "resolved": "https://registry.npmjs.org/pdf-parse/-/pdf-parse-1.1.4.tgz",
++      "integrity": "sha512-XRIRcLgk6ZnUbsHsYXExMw+krrPE81hJ6FQPLdBNhhBefqIQKXu/WeTgNBGSwPrfU0v+UCEwn7AoAUOsVKHFvQ==",
++      "license": "MIT",
++      "dependencies": {
++        "node-ensure": "^0.0.0"
++      },
++      "engines": {
++        "node": ">=6.8.1"
++      },
++      "funding": {
++        "type": "github",
++        "url": "https://github.com/sponsors/mehmet-kozan"
++      }
++    },
+     "node_modules/pend": {
+       "version": "1.2.0",
+       "resolved": "https://registry.npmjs.org/pend/-/pend-1.2.0.tgz",
+@@ -12371,6 +12407,12 @@
+         "node": ">= 0.8.0"
+       }
+     },
++    "node_modules/server-only": {
++      "version": "0.0.1",
++      "resolved": "https://registry.npmjs.org/server-only/-/server-only-0.0.1.tgz",
++      "integrity": "sha512-qepMx2JxAa5jjfzxG79yPPq+8BuFToHd1hm7kI+Z4zAq1ftQiP7HcxMhDDItrbtwVeLg/cY2JnKnrcFkmiswNA==",
++      "license": "MIT"
++    },
+     "node_modules/set-function-length": {
+       "version": "1.2.2",
+       "resolved": "https://registry.npmjs.org/set-function-length/-/set-function-length-1.2.2.tgz",
+diff --git a/package.json b/package.json
+index 9abe196..5ac9948 100644
+--- a/package.json
++++ b/package.json
+@@ -54,6 +54,8 @@
+     "lucide-react": "^0.475.0",
+     "next": "15.5.9",
+     "patch-package": "^8.0.0",
++    "pdf-parse": "^1.1.1",
++    "server-only": "^0.0.1",
+     "react": "^19.2.1",
+     "react-day-picker": "^9.11.3",
+     "react-dom": "^19.2.1",
+@@ -64,7 +66,8 @@
+     "zod": "^3.24.2"
+   },
+   "devDependencies": {
+-    "@types/node": "^20",
++    "@types/node": "^20",
++    "@types/pdf-parse": "^1.1.4",
+     "@types/react": "^19.2.1",
+     "@types/react-dom": "^19.2.1",
+     "cross-env": "^10.1.0",
+diff --git a/src/app/api/agents/run/route.ts b/src/app/api/agents/run/route.ts
+new file mode 100644
+index 0000000..f9c6f65
+--- /dev/null
++++ b/src/app/api/agents/run/route.ts
+@@ -0,0 +1,83 @@
++import { NextRequest, NextResponse } from 'next/server';
++import { agentRegistry } from '@/lib/agents/agentRegistry';
++import { extractPdfText } from '@/lib/pdfExtract';
++import { chatComplete } from '@/lib/huggingface';
++
++export const runtime = 'nodejs';
++export const maxDuration = 60;
++
++export async function POST(req: NextRequest) {
++  try {
++    const formData = await req.formData();
++    const agentId = formData.get('agentId');
++    const textInput = (formData.get('input') as string | null) || '';
++    const file = formData.get('file') as File | null;
++    // Used only for agents that don't have a specialized implementation below —
++    // lets any agent listed in the catalog run for real via a generic HF prompt.
++    const agentName = (formData.get('agentName') as string | null) || 'AI Agent';
++    const agentDescription = (formData.get('agentDescription') as string | null) || '';
++    const agentPromptTemplate = (formData.get('agentPromptTemplate') as string | null) || '';
++
++    if (typeof agentId !== 'string' || !agentId) {
++      return NextResponse.json({ error: 'Missing agentId.' }, { status: 400 });
++    }
++
++    const agent = agentRegistry[agentId];
++
++    let combinedInput = textInput.trim();
++
++    if (file && file.size > 0) {
++      if (file.type !== 'application/pdf') {
++        return NextResponse.json({ error: 'Only PDF files are supported.' }, { status: 400 });
++      }
++      if (file.size > 5 * 1024 * 1024) {
++        return NextResponse.json({ error: 'File too large (max 5MB).' }, { status: 400 });
++      }
++      const arrayBuffer = await file.arrayBuffer();
++      const buffer = Buffer.from(arrayBuffer);
++      const pdfText = await extractPdfText(buffer);
++
++      if (!pdfText || pdfText.length < 10) {
++        return NextResponse.json(
++          { error: 'Could not extract readable text from this PDF. It may be a scanned image — try pasting the text directly instead.' },
++          { status: 422 }
++        );
++      }
++
++      combinedInput = combinedInput
++        ? `${pdfText}\n\n--- Additional context from user ---\n${combinedInput}`
++        : pdfText;
++    }
++
++    if (!combinedInput.trim()) {
++      return NextResponse.json({ error: 'Please provide text input or upload a file.' }, { status: 400 });
++    }
++
++    if (agent) {
++      const result = await agent.run(combinedInput);
++      return NextResponse.json({ result });
++    }
++
++    // Generic path: any agent in the catalog without a specialized implementation
++    // still runs for real, using its own name/description/prompt template as system context.
++    const systemPrompt = `You are "${agentName}", an AI agent. Your purpose: ${agentDescription || 'assist the user with their request.'}${
++      agentPromptTemplate ? `\n\nYour operating instructions: ${agentPromptTemplate}` : ''
++    }\n\nRespond directly and usefully to the user's input below, staying in character as this agent. Format your response with clear structure (headings, bullet points) where it helps readability. Do not mention that you are a generic or simulated agent.`;
++
++    const responseText = await chatComplete(
++      [
++        { role: 'system', content: systemPrompt },
++        { role: 'user', content: combinedInput.slice(0, 10000) },
++      ],
++      { temperature: 0.6, maxTokens: 1600 }
++    );
++
++    return NextResponse.json({ result: responseText });
++  } catch (error: any) {
++    console.error('Agent run failed:', error);
++    return NextResponse.json(
++      { error: error?.message || 'Agent execution failed. Please try again.' },
++      { status: 500 }
++    );
++  }
++}
+diff --git a/src/app/battle/page.tsx b/src/app/battle/page.tsx
+index 01b34b5..c5d08b4 100644
+--- a/src/app/battle/page.tsx
++++ b/src/app/battle/page.tsx
+@@ -12,16 +12,14 @@ import { ScrollArea } from '@/components/ui/scroll-area';
+ import { toast } from '@/hooks/use-toast';
+ import { Badge } from '@/components/ui/badge';
+ import { Skeleton } from '@/components/ui/skeleton';
+-import { runAgent } from '@/lib/core/runAgent';
++import { runAgentClient } from '@/lib/runAgentClient';
+ import { OutputDisplay } from '@/components/agent/OutputDisplay';
+-import { ApiKeyInput } from '@/components/agent/ApiKeyInput';
+ import { cn } from '@/lib/utils';
+ import { useAgents } from '@/context/agents-context';
+ 
+ export default function BattleModePage() {
+     const { agents } = useAgents();
+     const [prompt, setPrompt] = useState('');
+-    const [apiKey, setApiKey] = useState('');
+     const [file, setFile] = useState<File | null>(null);
+     const [agentAId, setAgentAId] = useState(agents[0]?.id || '');
+     const [agentBId, setAgentBId] = useState(agents[2]?.id || agents[1]?.id || '');
+@@ -59,18 +57,30 @@ export default function BattleModePage() {
+         setResponseA(null);
+         setResponseB(null);
+ 
+-        const executionInput = file ? `[FILE: ${file.name}] ${prompt}` : prompt;
+-
+         try {
+             const [resultA, resultB] = await Promise.all([
+-                runAgent(agentAId, executionInput, apiKey),
+-                runAgent(agentBId, executionInput, apiKey)
++                runAgentClient({
++                    agentId: agentAId,
++                    input: prompt,
++                    file,
++                    agentName: agentA?.name,
++                    agentDescription: agentA?.description,
++                    agentPromptTemplate: agentA?.promptTemplate,
++                }),
++                runAgentClient({
++                    agentId: agentBId,
++                    input: prompt,
++                    file,
++                    agentName: agentB?.name,
++                    agentDescription: agentB?.description,
++                    agentPromptTemplate: agentB?.promptTemplate,
++                }),
+             ]);
+ 
+             setResponseA(resultA);
+             setResponseB(resultB);
+-        } catch (error) {
+-            toast({ title: "Error", description: "The battle failed due to an engine error.", variant: "destructive" });
++        } catch (error: any) {
++            toast({ title: "Error", description: error?.message || "The battle failed due to an engine error.", variant: "destructive" });
+         } finally {
+             setIsFighting(false);
+         }
+@@ -156,7 +166,10 @@ export default function BattleModePage() {
+                         </div>
+ 
+                         <div className="space-y-6 self-end">
+-                            <ApiKeyInput value={apiKey} onChange={setApiKey} />
++                            <div className="flex items-center gap-2 text-[11px] text-muted-foreground bg-muted/20 rounded-lg px-3 py-2">
++                                <Zap className="h-3.5 w-3.5 text-primary shrink-0" />
++                                Both agents run live on Hugging Face-hosted models — no API key needed.
++                            </div>
+                             <Button
+                                 onClick={handleBattle}
+                                 className="w-full bg-primary hover:bg-primary/90 h-14 text-lg gap-2 shadow-xl shadow-primary/20"
+diff --git a/src/components/agent/AgentRunner.tsx b/src/components/agent/AgentRunner.tsx
+index 7b3e879..6ae7da2 100644
+--- a/src/components/agent/AgentRunner.tsx
++++ b/src/components/agent/AgentRunner.tsx
+@@ -1,183 +1,199 @@
+-/**
+- * @fileOverview Orchestrates the agent execution flow including input, API keys, and output.
+- */
+-import React, { useState, useRef } from 'react';
+-import { Button } from '@/components/ui/button';
+-import { Textarea } from '@/components/ui/textarea';
+-import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
+-import { Play, Terminal, Sparkles, Loader2, FileUp, FileText, X } from 'lucide-react';
+-import { ApiKeyInput } from './ApiKeyInput';
+-import { OutputDisplay } from './OutputDisplay';
+-import { runAgent } from '@/lib/core/runAgent';
+-import { toast } from '@/hooks/use-toast';
+-import { agentRegistry } from '@/lib/agents/agentRegistry';
+-
+-interface AgentRunnerProps {
+-    agentId: string;
+-}
+-
+-export function AgentRunner({ agentId }: AgentRunnerProps) {
+-    const [input, setInput] = useState('');
+-    const [file, setFile] = useState<File | null>(null);
+-    const [apiKey, setApiKey] = useState('');
+-    const [isProcessing, setIsProcessing] = useState(false);
+-    const [output, setOutput] = useState<any>(null);
+-    const fileInputRef = useRef<HTMLInputElement>(null);
+-
+-    const agent = agentRegistry[agentId];
+-    const isFileInput = agent?.inputType === 'file';
+-
+-    const handleRun = async () => {
+-        if (!isFileInput && !input.trim()) {
+-            toast({ title: "Input Required", description: "Please provide input for the agent.", variant: "destructive" });
+-            return;
+-        }
+-
+-        if (isFileInput && !file && !input.trim()) {
+-            toast({ title: "File Required", description: "Please upload a resume or provide text content.", variant: "destructive" });
+-            return;
+-        }
+-
+-        setIsProcessing(true);
+-        setOutput(null);
+-
+-        try {
+-            // For demo purposes, we pass the file name if it's a file, otherwise the text
+-            const executionInput = file ? `[FILE: ${file.name}] ${input}` : input;
+-            const result = await runAgent(agentId, executionInput, apiKey);
+-            setOutput(result);
+-        } catch (error: any) {
+-            toast({ title: "Execution Failed", description: error.message, variant: "destructive" });
+-        } finally {
+-            setIsProcessing(false);
+-        }
+-    };
+-
+-    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+-        const selectedFile = e.target.files?.[0];
+-        if (selectedFile) {
+-            if (selectedFile.type !== 'application/pdf') {
+-                toast({ title: "Invalid File", description: "Please upload a PDF document.", variant: "destructive" });
+-                return;
+-            }
+-            setFile(selectedFile);
+-        }
+-    };
+-
+-    return (
+-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 min-h-[500px]">
+-            <Card className="flex flex-col border-muted">
+-                <CardHeader className="border-b py-3 px-6 bg-muted/20">
+-                    <CardTitle className="text-sm font-bold flex items-center gap-2">
+-                        <Terminal className="h-4 w-4" />
+-                        Execution Console
+-                    </CardTitle>
+-                </CardHeader>
+-                <CardContent className="flex-1 p-6 space-y-6">
+-                    {isFileInput ? (
+-                        <div className="space-y-4">
+-                            <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Upload Resume (PDF)</Label>
+-                            {!file ? (
+-                                <div
+-                                    onClick={() => fileInputRef.current?.click()}
+-                                    className="border-2 border-dashed border-muted rounded-xl p-8 flex flex-col items-center justify-center gap-3 cursor-pointer hover:bg-primary/5 hover:border-primary/50 transition-all group"
+-                                >
+-                                    <div className="h-12 w-12 rounded-full bg-muted flex items-center justify-center group-hover:bg-primary/10 transition-colors">
+-                                        <FileUp className="h-6 w-6 text-muted-foreground group-hover:text-primary" />
+-                                    </div>
+-                                    <div className="text-center">
+-                                        <p className="text-sm font-medium">Click to upload or drag and drop</p>
+-                                        <p className="text-xs text-muted-foreground mt-1">PDF format only (Max 5MB)</p>
+-                                    </div>
+-                                    <input
+-                                        type="file"
+-                                        ref={fileInputRef}
+-                                        className="hidden"
+-                                        accept=".pdf"
+-                                        onChange={handleFileChange}
+-                                    />
+-                                </div>
+-                            ) : (
+-                                <div className="flex items-center justify-between p-4 bg-primary/10 border border-primary/20 rounded-lg">
+-                                    <div className="flex items-center gap-3">
+-                                        <div className="h-10 w-10 rounded-lg bg-primary/20 flex items-center justify-center">
+-                                            <FileText className="h-5 w-5 text-primary" />
+-                                        </div>
+-                                        <div>
+-                                            <p className="text-sm font-bold truncate max-w-[200px]">{file.name}</p>
+-                                            <p className="text-[10px] text-muted-foreground">{(file.size / 1024).toFixed(1)} KB</p>
+-                                        </div>
+-                                    </div>
+-                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={() => setFile(null)}>
+-                                        <X className="h-4 w-4" />
+-                                    </Button>
+-                                </div>
+-                            )}
+-                            <div className="space-y-2">
+-                                <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Additional Context (Optional)</Label>
+-                                <Textarea
+-                                    placeholder="Paste specific job requirements or notes..."
+-                                    className="min-h-[100px] resize-none bg-muted/10 border-muted focus-visible:ring-primary/30"
+-                                    value={input}
+-                                    onChange={(e) => setInput(e.target.value)}
+-                                />
+-                            </div>
+-                        </div>
+-                    ) : (
+-                        <div className="space-y-2">
+-                            <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Input Data</Label>
+-                            <Textarea
+-                                placeholder="Enter text to process..."
+-                                className="min-h-[200px] resize-none bg-muted/10 border-muted focus-visible:ring-primary/30"
+-                                value={input}
+-                                onChange={(e) => setInput(e.target.value)}
+-                            />
+-                        </div>
+-                    )}
+-                    <ApiKeyInput value={apiKey} onChange={setApiKey} />
+-                </CardContent>
+-                <CardFooter className="border-t p-4 flex justify-end">
+-                    <Button onClick={handleRun} disabled={isProcessing} className="gap-2 bg-primary hover:bg-primary/90">
+-                        {isProcessing ? (
+-                            <>
+-                                <Loader2 className="h-4 w-4 animate-spin" />
+-                                Processing...
+-                            </>
+-                        ) : (
+-                            <>
+-                                <Play className="h-3.5 w-3.5" />
+-                                Run Agent
+-                            </>
+-                        )}
+-                    </Button>
+-                </CardFooter>
+-            </Card>
+-
+-            <Card className="flex flex-col border-muted bg-muted/5 overflow-hidden">
+-                <CardHeader className="border-b py-3 px-6 bg-muted/20">
+-                    <CardTitle className="text-sm font-bold flex items-center gap-2">
+-                        <Sparkles className="h-4 w-4 text-primary" />
+-                        Result Output
+-                    </CardTitle>
+-                </CardHeader>
+-                <CardContent className="flex-1 p-6 overflow-y-auto">
+-                    {output ? (
+-                        <div className="animate-in fade-in slide-in-from-top-2 duration-300">
+-                            <OutputDisplay output={output} />
+-                        </div>
+-                    ) : (
+-                        <div className="h-full flex flex-col items-center justify-center text-center text-muted-foreground/40 py-12">
+-                            <Terminal className="h-12 w-12 mb-4 opacity-20" />
+-                            <p className="text-sm">Agent output will appear here after execution</p>
+-                        </div>
+-                    )}
+-                </CardContent>
+-            </Card>
+-        </div>
+-    );
+-}
+-
+-// Helper to avoid build error since Label is used
+-function Label({ children, className }: { children: React.ReactNode, className?: string }) {
+-    return <label className={`text-sm font-medium leading-none ${className}`}>{children}</label>;
+-}
++/**
++ * @fileOverview Orchestrates the agent execution flow: input capture, calling the
++ * server-side /api/agents/run route (which talks to Hugging Face), and rendering output.
++ */
++import React, { useState, useRef } from 'react';
++import { Button } from '@/components/ui/button';
++import { Textarea } from '@/components/ui/textarea';
++import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
++import { Play, Terminal, Sparkles, Loader2, FileUp, FileText, X } from 'lucide-react';
++import { OutputDisplay } from './OutputDisplay';
++import { runAgentClient } from '@/lib/runAgentClient';
++import { toast } from '@/hooks/use-toast';
++import { useAgents } from '@/context/agents-context';
++
++interface AgentRunnerProps {
++    agentId: string;
++}
++
++// Agents whose input is a document (PDF upload with optional extra text context).
++const FILE_INPUT_AGENTS = new Set(['resume-analyzer', 'resume-analyzer-devraj', 'legal-summarizer']);
++
++export function AgentRunner({ agentId }: AgentRunnerProps) {
++    const { agents } = useAgents();
++    const agentMeta = agents.find(a => a.id === agentId);
++
++    const [input, setInput] = useState('');
++    const [file, setFile] = useState<File | null>(null);
++    const [isProcessing, setIsProcessing] = useState(false);
++    const [output, setOutput] = useState<any>(null);
++    const fileInputRef = useRef<HTMLInputElement>(null);
++
++    const isFileInput = FILE_INPUT_AGENTS.has(agentId);
++
++    const handleRun = async () => {
++        if (!isFileInput && !input.trim()) {
++            toast({ title: "Input Required", description: "Please provide input for the agent.", variant: "destructive" });
++            return;
++        }
++
++        if (isFileInput && !file && !input.trim()) {
++            toast({ title: "File Required", description: "Please upload a document or provide text content.", variant: "destructive" });
++            return;
++        }
++
++        setIsProcessing(true);
++        setOutput(null);
++
++        try {
++            const result = await runAgentClient({
++                agentId,
++                input,
++                file,
++                agentName: agentMeta?.name,
++                agentDescription: agentMeta?.description,
++                agentPromptTemplate: agentMeta?.promptTemplate,
++            });
++            setOutput(result);
++        } catch (error: any) {
++            toast({ title: "Execution Failed", description: error.message, variant: "destructive" });
++        } finally {
++            setIsProcessing(false);
++        }
++    };
++
++    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
++        const selectedFile = e.target.files?.[0];
++        if (selectedFile) {
++            if (selectedFile.type !== 'application/pdf') {
++                toast({ title: "Invalid File", description: "Please upload a PDF document.", variant: "destructive" });
++                return;
++            }
++            setFile(selectedFile);
++        }
++    };
++
++    return (
++        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 min-h-[500px]">
++            <Card className="flex flex-col border-muted">
++                <CardHeader className="border-b py-3 px-6 bg-muted/20">
++                    <CardTitle className="text-sm font-bold flex items-center gap-2">
++                        <Terminal className="h-4 w-4" />
++                        Execution Console
++                    </CardTitle>
++                </CardHeader>
++                <CardContent className="flex-1 p-6 space-y-6">
++                    {isFileInput ? (
++                        <div className="space-y-4">
++                            <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Upload Document (PDF)</Label>
++                            {!file ? (
++                                <div
++                                    onClick={() => fileInputRef.current?.click()}
++                                    className="border-2 border-dashed border-muted rounded-xl p-8 flex flex-col items-center justify-center gap-3 cursor-pointer hover:bg-primary/5 hover:border-primary/50 transition-all group"
++                                >
++                                    <div className="h-12 w-12 rounded-full bg-muted flex items-center justify-center group-hover:bg-primary/10 transition-colors">
++                                        <FileUp className="h-6 w-6 text-muted-foreground group-hover:text-primary" />
++                                    </div>
++                                    <div className="text-center">
++                                        <p className="text-sm font-medium">Click to upload or drag and drop</p>
++                                        <p className="text-xs text-muted-foreground mt-1">PDF format only (Max 5MB)</p>
++                                    </div>
++                                    <input
++                                        type="file"
++                                        ref={fileInputRef}
++                                        className="hidden"
++                                        accept=".pdf"
++                                        onChange={handleFileChange}
++                                    />
++                                </div>
++                            ) : (
++                                <div className="flex items-center justify-between p-4 bg-primary/10 border border-primary/20 rounded-lg">
++                                    <div className="flex items-center gap-3">
++                                        <div className="h-10 w-10 rounded-lg bg-primary/20 flex items-center justify-center">
++                                            <FileText className="h-5 w-5 text-primary" />
++                                        </div>
++                                        <div>
++                                            <p className="text-sm font-bold truncate max-w-[200px]">{file.name}</p>
++                                            <p className="text-[10px] text-muted-foreground">{(file.size / 1024).toFixed(1)} KB</p>
++                                        </div>
++                                    </div>
++                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={() => setFile(null)}>
++                                        <X className="h-4 w-4" />
++                                    </Button>
++                                </div>
++                            )}
++                            <div className="space-y-2">
++                                <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Additional Context (Optional)</Label>
++                                <Textarea
++                                    placeholder="Paste specific job requirements or notes..."
++                                    className="min-h-[100px] resize-none bg-muted/10 border-muted focus-visible:ring-primary/30"
++                                    value={input}
++                                    onChange={(e) => setInput(e.target.value)}
++                                />
++                            </div>
++                        </div>
++                    ) : (
++                        <div className="space-y-2">
++                            <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Input Data</Label>
++                            <Textarea
++                                placeholder="Enter text to process..."
++                                className="min-h-[200px] resize-none bg-muted/10 border-muted focus-visible:ring-primary/30"
++                                value={input}
++                                onChange={(e) => setInput(e.target.value)}
++                            />
++                        </div>
++                    )}
++                    <div className="flex items-center gap-2 text-[11px] text-muted-foreground bg-muted/20 rounded-lg px-3 py-2">
++                        <Sparkles className="h-3.5 w-3.5 text-primary shrink-0" />
++                        Powered by a Hugging Face-hosted model. Runs server-side — no API key needed from you.
++                    </div>
++                </CardContent>
++                <CardFooter className="border-t p-4 flex justify-end">
++                    <Button onClick={handleRun} disabled={isProcessing} className="gap-2 bg-primary hover:bg-primary/90">
++                        {isProcessing ? (
++                            <>
++                                <Loader2 className="h-4 w-4 animate-spin" />
++                                Processing...
++                            </>
++                        ) : (
++                            <>
++                                <Play className="h-3.5 w-3.5" />
++                                Run Agent
++                            </>
++                        )}
++                    </Button>
++                </CardFooter>
++            </Card>
++
++            <Card className="flex flex-col border-muted bg-muted/5 overflow-hidden">
++                <CardHeader className="border-b py-3 px-6 bg-muted/20">
++                    <CardTitle className="text-sm font-bold flex items-center gap-2">
++                        <Sparkles className="h-4 w-4 text-primary" />
++                        Result Output
++                    </CardTitle>
++                </CardHeader>
++                <CardContent className="flex-1 p-6 overflow-y-auto">
++                    {output ? (
++                        <div className="animate-in fade-in slide-in-from-top-2 duration-300">
++                            <OutputDisplay output={output} />
++                        </div>
++                    ) : isProcessing ? (
++                        <div className="h-full flex flex-col items-center justify-center text-center text-muted-foreground/60 py-12 gap-3">
++                            <Loader2 className="h-8 w-8 animate-spin text-primary" />
++                            <p className="text-sm">Running inference on Hugging Face...</p>
++                        </div>
++                    ) : (
++                        <div className="h-full flex flex-col items-center justify-center text-center text-muted-foreground/40 py-12">
++                            <Terminal className="h-12 w-12 mb-4 opacity-20" />
++                            <p className="text-sm">Agent output will appear here after execution</p>
++                        </div>
++                    )}
++                </CardContent>
++            </Card>
++        </div>
++    );
++}
++
++function Label({ children, className }: { children: React.ReactNode, className?: string }) {
++    return <label className={`text-sm font-medium leading-none ${className}`}>{children}</label>;
++}
+diff --git a/src/components/agent/ApiKeyInput.tsx b/src/components/agent/ApiKeyInput.tsx
+deleted file mode 100644
+index d17e8fb..0000000
+--- a/src/components/agent/ApiKeyInput.tsx
++++ /dev/null
+@@ -1,33 +0,0 @@
+-/**
+- * @fileOverview Component for secure API key entry during agent runs.
+- */
+-import React from 'react';
+-import { Input } from '@/components/ui/input';
+-import { Label } from '@/components/ui/label';
+-import { Key } from 'lucide-react';
+-
+-interface ApiKeyInputProps {
+-  value: string;
+-  onChange: (value: string) => void;
+-}
+-
+-export function ApiKeyInput({ value, onChange }: ApiKeyInputProps) {
+-  return (
+-    <div className="space-y-2">
+-      <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+-        <Key className="h-3 w-3" />
+-        API Key (Optional for demo)
+-      </Label>
+-      <Input
+-        type="password"
+-        placeholder="sk-..."
+-        value={value}
+-        onChange={(e) => onChange(e.target.value)}
+-        className="bg-muted/30 border-none h-9 text-xs"
+-      />
+-      <p className="text-[10px] text-muted-foreground italic">
+-        Your key is used only for this session and never stored.
+-      </p>
+-    </div>
+-  );
+-}
+diff --git a/src/lib/agents/agentRegistry.ts b/src/lib/agents/agentRegistry.ts
+index d5be0ac..1ee8546 100644
+--- a/src/lib/agents/agentRegistry.ts
++++ b/src/lib/agents/agentRegistry.ts
+@@ -1,61 +1,64 @@
+-/**
+- * @fileOverview Central registry for all AI agents and their execution logic.
+- */
+-import { runResumeAnalyzer } from './resumeAnalyzer';
+-import { runCodeDebugger } from './codeDebugger';
+-import { runLinkedInGenerator } from './linkedinGenerator';
+-import { runResearchAgent } from './researchAgent';
+-import { runContractAnalyzer } from './contractAnalyzer';
+-
+-export interface AgentRegistryEntry {
+-  id: string;
+-  name: string;
+-  description: string;
+-  inputType: 'text' | 'file';
+-  run: (input: string, apiKey: string) => Promise<any>;
+-}
+-
+-export const agentRegistry: Record<string, AgentRegistryEntry> = {
+-  'resume-analyzer': {
+-    id: 'resume-analyzer',
+-    name: 'Resume Analyzer',
+-    description: 'Analyze resumes and generate ATS score with suggestions',
+-    inputType: 'file',
+-    run: (input, apiKey) => runResumeAnalyzer(input, apiKey),
+-  },
+-  'code-debugger': {
+-    id: 'code-debugger',
+-    name: 'Code Debugger',
+-    description: 'Identifies bugs and suggests fixes with detailed explanations',
+-    inputType: 'text',
+-    run: (input, apiKey) => runCodeDebugger(input, apiKey),
+-  },
+-  'code-debugger-pro': {
+-    id: 'code-debugger-pro',
+-    name: 'Code Debugger Pro',
+-    description: 'Advanced Logic Fixer',
+-    inputType: 'text',
+-    run: (input, apiKey) => runCodeDebugger(input, apiKey),
+-  },
+-  'linkedin-poster': {
+-    id: 'linkedin-poster',
+-    name: 'LinkedIn Poster',
+-    description: 'Engagement Growth Tool',
+-    inputType: 'text',
+-    run: (input, apiKey) => runLinkedInGenerator(input, apiKey),
+-  },
+-  'research-agent': {
+-    id: 'research-agent',
+-    name: 'Research Agent',
+-    description: 'Deep multi-step reasoning and structured analysis engine',
+-    inputType: 'text',
+-    run: (input, apiKey) => runResearchAgent(input, apiKey),
+-  },
+-  'legal-summarizer': {
+-    id: 'legal-summarizer',
+-    name: 'Legal Summarizer',
+-    description: 'Contract Risk Analysis',
+-    inputType: 'file',
+-    run: (input, apiKey) => runContractAnalyzer(input, apiKey),
+-  }
+-};
++/**
++ * @fileOverview Central registry for all AI agents and their execution logic.
++ * All run() functions call Hugging Face-hosted models server-side (see src/lib/huggingface.ts).
++ * This module must only be imported from server code (API routes), never from a client component.
++ */
++import 'server-only';
++import { runResumeAnalyzer } from './resumeAnalyzer';
++import { runCodeDebugger } from './codeDebugger';
++import { runLinkedInGenerator } from './linkedinGenerator';
++import { runResearchAgent } from './researchAgent';
++import { runContractAnalyzer } from './contractAnalyzer';
++
++export interface AgentRegistryEntry {
++  id: string;
++  name: string;
++  description: string;
++  inputType: 'text' | 'file';
++  run: (input: string) => Promise<any>;
++}
++
++export const agentRegistry: Record<string, AgentRegistryEntry> = {
++  'resume-analyzer': {
++    id: 'resume-analyzer',
++    name: 'Resume Analyzer',
++    description: 'Analyze resumes and generate ATS score with suggestions',
++    inputType: 'file',
++    run: (input) => runResumeAnalyzer(input),
++  },
++  'code-debugger': {
++    id: 'code-debugger',
++    name: 'Code Debugger',
++    description: 'Identifies bugs and suggests fixes with detailed explanations',
++    inputType: 'text',
++    run: (input) => runCodeDebugger(input),
++  },
++  'code-debugger-pro': {
++    id: 'code-debugger-pro',
++    name: 'Code Debugger Pro',
++    description: 'Advanced Logic Fixer',
++    inputType: 'text',
++    run: (input) => runCodeDebugger(input),
++  },
++  'linkedin-poster': {
++    id: 'linkedin-poster',
++    name: 'LinkedIn Poster',
++    description: 'Engagement Growth Tool',
++    inputType: 'text',
++    run: (input) => runLinkedInGenerator(input),
++  },
++  'research-agent': {
++    id: 'research-agent',
++    name: 'Research Agent',
++    description: 'Deep multi-step reasoning and structured analysis engine',
++    inputType: 'text',
++    run: (input) => runResearchAgent(input),
++  },
++  'legal-summarizer': {
++    id: 'legal-summarizer',
++    name: 'Legal Summarizer',
++    description: 'Contract Risk Analysis',
++    inputType: 'file',
++    run: (input) => runContractAnalyzer(input),
++  }
++};
+diff --git a/src/lib/agents/codeDebugger.ts b/src/lib/agents/codeDebugger.ts
+index 7c4a3de..1dda8e4 100644
+--- a/src/lib/agents/codeDebugger.ts
++++ b/src/lib/agents/codeDebugger.ts
+@@ -1,130 +1,52 @@
+-/**
+- * @fileOverview Implementation of the Code Debugger Agent logic.
+- * Features smarter heuristic checks and simulated AI code fixing.
+- */
+-
+-export interface DebugResult {
+-  fixedCode: string;
+-  errorsFound: string[];
+-  explanation: string;
+-  improvements: string[];
+-  errorCount: number;
+-}
+-
+-const COMMON_TYPOS: Record<string, string> = {
+-  'functon': 'function',
+-  'retun': 'return',
+-  'cont ': 'const ',
+-  'export defalt': 'export default',
+-  'consoe.log': 'console.log',
+-  'widow.': 'window.',
+-};
+-
+-export async function runCodeDebugger(input: string, apiKey?: string): Promise<DebugResult> {
+-  // Simulate processing delay for "thinking" feel
+-  await new Promise(resolve => setTimeout(resolve, 1000));
+-
+-  const errorsFound: string[] = [];
+-  let fixedCode = input;
+-
+-  // 1. Unclosed Quotes
+-  const lines = input.split('\n');
+-  lines.forEach((line, index) => {
+-    const doubleQuotes = (line.match(/"/g) || []).length;
+-    const singleQuotes = (line.match(/'/g) || []).length;
+-    
+-    if (doubleQuotes % 2 !== 0) {
+-      errorsFound.push(`Line ${index + 1}: Unclosed double quote (") detected.`);
+-      // Simple fix for demo: append missing quote if it's a simple case
+-      if (line.trim().startsWith('print(') || line.trim().startsWith('console.log(')) {
+-          fixedCode = fixedCode.replace(line, line + '"');
+-      }
+-    }
+-    if (singleQuotes % 2 !== 0) {
+-      errorsFound.push(`Line ${index + 1}: Unclosed single quote (') detected.`);
+-      if (line.trim().startsWith('print(') || line.trim().startsWith('console.log(')) {
+-          fixedCode = fixedCode.replace(line, line + "'");
+-      }
+-    }
+-  });
+-
+-  // 2. Keyword Typo Detection
+-  Object.entries(COMMON_TYPOS).forEach(([typo, fix]) => {
+-    if (input.includes(typo)) {
+-      errorsFound.push(`Typo detected: "${typo}" corrected to "${fix}"`);
+-      fixedCode = fixedCode.replaceAll(typo, fix);
+-    }
+-  });
+-
+-  // 3. Bracket/Parentheses Mismatch
+-  const pairs = [
+-    { open: '{', close: '}', name: 'curly braces' },
+-    { open: '(', close: ')', name: 'parentheses' },
+-    { open: '[', close: ']', name: 'square brackets' }
+-  ];
+-
+-  pairs.forEach(pair => {
+-    const openCount = (input.match(new RegExp('\\' + pair.open, 'g')) || []).length;
+-    const closeCount = (input.match(new RegExp('\\' + pair.close, 'g')) || []).length;
+-    if (openCount !== closeCount) {
+-      const diff = openCount - closeCount;
+-      errorsFound.push(`Mismatched ${pair.name}: found ${openCount} open and ${closeCount} closed.`);
+-      if (diff > 0) {
+-        // Only append if it looks like a simple missing closing bracket
+-        if (!fixedCode.endsWith(pair.close.repeat(diff))) {
+-            fixedCode += pair.close.repeat(diff);
+-        }
+-      }
+-    }
+-  });
+-
+-  // 4. Python-style missing colons (very simple heuristic)
+-  const pythonKeywords = ['if', 'else', 'for', 'while', 'def', 'class'];
+-  lines.forEach((line, index) => {
+-    const trimmed = line.trim();
+-    pythonKeywords.forEach(kw => {
+-      if (trimmed.startsWith(kw + ' ') || trimmed === kw) {
+-        if (!trimmed.endsWith(':') && !trimmed.endsWith('{') && !trimmed.endsWith(')')) {
+-          errorsFound.push(`Line ${index + 1}: Potential missing colon (:) for '${kw}' statement.`);
+-          fixedCode = fixedCode.replace(line, line + ':');
+-        }
+-      }
+-    });
+-  });
+-
+-  // 5. Strict Equality Check
+-  if (input.includes(' == ') && !input.includes(' === ')) {
+-    errorsFound.push("Loose equality (==) found. In modern JS/TS, strict equality (===) is preferred.");
+-    fixedCode = fixedCode.replace(/ == /g, ' === ');
+-  }
+-
+-  // Final count check
+-  const actualErrorCount = errorsFound.length;
+-  
+-  if (actualErrorCount === 0) {
+-    errorsFound.push("No obvious syntax errors found via static analysis.");
+-  }
+-
+-  // Generate Explanation
+-  let explanation = actualErrorCount > 0 
+-    ? `Analysis complete. Found ${actualErrorCount} potential issue(s) that were automatically corrected.`
+-    : "Analysis complete. Your code looks syntactically sound.";
+-    
+-  if (apiKey) {
+-    explanation += " ✨ AI Enhanced: I've also verified the logical flow and confirmed no hidden race conditions.";
+-  }
+-
+-  const improvements = [
+-    "🛠️ Refactor nested logic into smaller, testable functions.",
+-    "🛡️ Use descriptive variable names to improve readability.",
+-    "⚡ Optimize loops by using built-in array methods like .map() or .filter()."
+-  ];
+-
+-  return {
+-    fixedCode,
+-    errorsFound,
+-    explanation,
+-    improvements,
+-    errorCount: actualErrorCount
+-  };
+-}
++/**
++ * @fileOverview Implementation of the Code Debugger Agent.
++ * Sends code to a Hugging Face-hosted LLM for real static analysis, bug fixes, and explanation.
++ */
++import 'server-only';
++import { chatCompleteJSON } from '@/lib/huggingface';
++
++export interface DebugResult {
++  fixedCode: string;
++  errorsFound: string[];
++  explanation: string;
++  improvements: string[];
++  errorCount: number;
++}
++
++const SYSTEM_PROMPT = `You are a senior software engineer performing a careful code review and bug fix pass. You support any mainstream language (JavaScript, TypeScript, Python, Java, C++, Go, etc.) and should detect the language automatically from the code.
++
++Analyze the given code for: syntax errors, logic bugs, off-by-one errors, null/undefined handling, type mismatches, unhandled edge cases, and bad practices (e.g. loose equality, unclosed brackets/quotes, missing colons in Python, etc.).
++
++Return ONLY a valid JSON object with exactly these keys:
++{
++  "fixedCode": "<the corrected, complete code, preserving the original structure and style as much as possible>",
++  "errorsFound": ["specific description of each issue found, referencing line numbers or code snippets where possible"],
++  "explanation": "<2-4 sentences summarizing what was wrong and what you changed>",
++  "improvements": ["2-4 additional best-practice suggestions beyond the bug fixes"],
++  "errorCount": <integer, number of distinct issues found>
++}
++If the code has no bugs, set errorsFound to ["No issues found - code is syntactically and logically sound."], errorCount to 0, and fixedCode equal to the original code.
++No markdown, no commentary outside the JSON.`;
++
++export async function runCodeDebugger(input: string): Promise<DebugResult> {
++  const trimmed = input.trim();
++  if (!trimmed) {
++    throw new Error('Please paste some code to debug.');
++  }
++
++  const result = await chatCompleteJSON<DebugResult>(
++    [
++      { role: 'system', content: SYSTEM_PROMPT },
++      { role: 'user', content: `Code to review:\n\n\`\`\`\n${trimmed.slice(0, 12000)}\n\`\`\`` },
++    ],
++    { temperature: 0.2, maxTokens: 2000 }
++  );
++
++  return {
++    fixedCode: result.fixedCode || trimmed,
++    errorsFound: Array.isArray(result.errorsFound) ? result.errorsFound : [],
++    explanation: result.explanation || '',
++    improvements: Array.isArray(result.improvements) ? result.improvements : [],
++    errorCount: Math.max(0, Math.round(Number(result.errorCount) || 0)),
++  };
++}
+diff --git a/src/lib/agents/contractAnalyzer.ts b/src/lib/agents/contractAnalyzer.ts
+index 9b2c532..f35a4d7 100644
+--- a/src/lib/agents/contractAnalyzer.ts
++++ b/src/lib/agents/contractAnalyzer.ts
+@@ -1,63 +1,54 @@
+-/**
+- * @fileOverview Implementation of the Legal Summarizer / Contract Analyzer logic.
+- * Detects risky legal keywords and provides structured risk assessments.
+- */
+-
+-export interface ContractAnalysisResult {
+-  summary: string;
+-  riskLevel: 'Low' | 'Medium' | 'High';
+-  riskyClauses: string[];
+-  explanation: string;
+-}
+-
+-const RISKY_KEYWORDS = [
+-  'liability', 
+-  'penalty', 
+-  'termination', 
+-  'fees', 
+-  'indemnity', 
+-  'warranties', 
+-  'breach', 
+-  'litigation',
+-  'uncapped',
+-  'non-compete'
+-];
+-
+-export async function runContractAnalyzer(input: string, apiKey?: string): Promise<ContractAnalysisResult> {
+-  // Simulate processing delay for "Legal AI Review" feel
+-  await new Promise(resolve => setTimeout(resolve, 2000));
+-
+-  const lowerInput = input.toLowerCase();
+-  const isFile = input.includes('[FILE:');
+-  const detectedRisks = RISKY_KEYWORDS.filter(kw => lowerInput.includes(kw));
+-  
+-  let riskLevel: 'Low' | 'Medium' | 'High' = 'Low';
+-  if (detectedRisks.length > 4) riskLevel = 'High';
+-  else if (detectedRisks.length > 1) riskLevel = 'Medium';
+-
+-  const riskyClauses = detectedRisks.map(risk => {
+-    // Extract a small snippet around the keyword for context
+-    const index = lowerInput.indexOf(risk);
+-    const start = Math.max(0, index - 30);
+-    const end = Math.min(input.length, index + 70);
+-    let snippet = input.substring(start, end).replace(/\n/g, ' ').trim();
+-    return `Review required for "${risk.toUpperCase()}": "...${snippet}..."`;
+-  });
+-
+-  const summary = isFile 
+-    ? "The uploaded document has been scanned. It appears to be a formal agreement containing standard commercial terms." 
+-    : "The provided text has been analyzed for legal exposure. It contains several clauses regarding rights, obligations, and potential liabilities.";
+-
+-  let explanation = "Our static analysis identifies specific keywords often associated with legal risk. A 'Medium' or 'High' risk level suggests that the contract may contain lopsided liability or aggressive termination rights.";
+-
+-  if (apiKey) {
+-    explanation += " ✨ [AI ENHANCED] Gemini has reviewed the context of these clauses. The 'Termination for Convenience' clause is notably one-sided and should be negotiated to be reciprocal.";
+-  }
+-
+-  return {
+-    summary,
+-    riskLevel,
+-    riskyClauses: riskyClauses.length > 0 ? riskyClauses : ["No high-risk keywords detected in the provided text."],
+-    explanation
+-  };
+-}
++/**
++ * @fileOverview Implementation of the Legal Summarizer / Contract Analyzer.
++ * Uses a Hugging Face-hosted LLM for real clause-level risk assessment.
++ */
++import 'server-only';
++import { chatCompleteJSON } from '@/lib/huggingface';
++
++export interface ContractAnalysisResult {
++  summary: string;
++  riskLevel: 'Low' | 'Medium' | 'High';
++  riskyClauses: string[];
++  explanation: string;
++}
++
++const SYSTEM_PROMPT = `You are an experienced contracts attorney reviewing an agreement for a client (not giving formal legal advice, but a practical risk read).
++
++Given the contract text, identify actual risky clauses (liability, indemnity, termination, penalties, non-compete, IP assignment, uncapped damages, auto-renewal, jurisdiction, etc.) with real quotes or close paraphrases from the text.
++
++Return ONLY a valid JSON object with exactly these keys:
++{
++  "summary": "<2-3 sentences describing what kind of agreement this is and its overall shape>",
++  "riskLevel": "<'Low' | 'Medium' | 'High', based on how one-sided/aggressive the risky clauses are>",
++  "riskyClauses": ["specific risky clause descriptions, each naming the clause type and quoting/paraphrasing the relevant text"],
++  "explanation": "<2-4 sentences explaining the reasoning behind the risk level and what to negotiate or watch out for>"
++}
++If no meaningful risk is found, riskyClauses should be ["No significant risk clauses detected in the provided text."] and riskLevel "Low".
++No markdown, no commentary outside the JSON.`;
++
++export async function runContractAnalyzer(input: string): Promise<ContractAnalysisResult> {
++  const trimmed = input.trim();
++  if (!trimmed || trimmed.length < 20) {
++    throw new Error('Please provide contract text or upload a PDF with readable content before running the analyzer.');
++  }
++
++  const result = await chatCompleteJSON<ContractAnalysisResult>(
++    [
++      { role: 'system', content: SYSTEM_PROMPT },
++      { role: 'user', content: `Contract text:\n\n${trimmed.slice(0, 14000)}` },
++    ],
++    { temperature: 0.25, maxTokens: 1800 }
++  );
++
++  const riskLevel: ContractAnalysisResult['riskLevel'] =
++    result.riskLevel === 'High' || result.riskLevel === 'Medium' || result.riskLevel === 'Low'
++      ? result.riskLevel
++      : 'Low';
++
++  return {
++    summary: result.summary || '',
++    riskLevel,
++    riskyClauses: Array.isArray(result.riskyClauses) ? result.riskyClauses : [],
++    explanation: result.explanation || '',
++  };
++}
+diff --git a/src/lib/agents/linkedinGenerator.ts b/src/lib/agents/linkedinGenerator.ts
+index 3582725..86981b5 100644
+--- a/src/lib/agents/linkedinGenerator.ts
++++ b/src/lib/agents/linkedinGenerator.ts
+@@ -1,108 +1,42 @@
+-/**
+- * @fileOverview Implementation of the LinkedIn Post Generator Agent logic.
+- * Generates viral-style LinkedIn content using high-converting archetypes.
+- */
+-
+-export interface LinkedInGeneratorResult {
+-  post: string;
+-  hooks: string[];
+-  hashtags: string[];
+-}
+-
+-const TEMPLATES = [
+-  {
+-    name: 'The Contrarian',
+-    generate: (topic: string) => `
+-🚀 Stop chasing the "safe" path in ${topic}.
+-
+-Most people think success in ${topic} comes from following the rules.
+-But the truth? The rules were written by people who wanted to stay comfortable.
+-
+-I spent years doing exactly what was expected. 
+-Result: Average performance. Average growth.
+-
+-Then I changed one thing: I started breaking the conventions of ${topic}.
+-
+-The result?
+-- 3x faster iterations.
+-- A network of high-performers.
+-- Real impact that people actually notice.
+-
+-If you're still doing what everyone else is doing, you're not leading. You're just part of the crowd. 🚢
+-    `,
+-    hook: (topic: string) => `Why the "Best Practices" in ${topic} are actually holding you back. 🛑`,
+-  },
+-  {
+-    name: 'The Storyteller',
+-    generate: (topic: string) => `
+-I remember my first week working with ${topic}.
+-
+-I was overwhelmed. I felt like an impostor.
+-I thought I had to know everything before I could contribute anything.
+-
+-But a mentor told me something I'll never forget:
+-"Perfection is the enemy of progress. Just ship the messy version." 🛠️
+-
+-So I did.
+-I made mistakes. I broke things. I learned.
+-
+-Today, ${topic} is my competitive advantage. Not because I'm the smartest, but because I was willing to be the most persistent.
+-
+-Don't wait for the "right" moment. It doesn't exist. Start with the messy version today. 👇
+-    `,
+-    hook: (topic: string) => `What I wish I knew about ${topic} 5 years ago. 💡`,
+-  },
+-  {
+-    name: 'The Value-Driven',
+-    generate: (topic: string) => `
+-3 Simple ways to dominate ${topic} in 2024:
+-
+-1️⃣ Focus on Outcomes, not Outputs.
+-It's easy to look busy. It's hard to be effective. Measure what matters.
+-
+-2️⃣ Build in Public.
+-Share your process, not just your results. People connect with the journey.
+-
+-3️⃣ Master the Fundamentals.
+-Tools change. Principles don't. Deep work is still the ultimate superpower in ${topic}.
+-
+-Which one are you focusing on this week? Let me know in the comments! 💬
+-    `,
+-    hook: (topic: string) => `Mastering ${topic} doesn't have to be complicated. 🚀`,
+-  }
+-];
+-
+-export async function runLinkedInGenerator(input: string, apiKey?: string): Promise<LinkedInGeneratorResult> {
+-  // Simulate processing delay for "thinking" feel
+-  await new Promise(resolve => setTimeout(resolve, 2000));
+-
+-  const topic = input.trim() || "Modern Tech";
+-  
+-  // Pick a random template to ensure variety
+-  const templateIndex = Math.floor(Math.random() * TEMPLATES.length);
+-  const selectedTemplate = TEMPLATES[templateIndex];
+-  
+-  const postBody = selectedTemplate.generate(topic);
+-  const postHook = selectedTemplate.hook(topic);
+-  const finalPost = `${postHook}\n${postBody}\n\n#${topic.replace(/\s+/g, '')} #Growth #Innovation #PersonalBranding #Strategy`;
+-
+-  const hooks = TEMPLATES.map(t => t.hook(topic));
+-
+-  const hashtags = [
+-    `#${topic.replace(/\s+/g, '')}`,
+-    "#GrowthMindset",
+-    "#Innovation",
+-    "#LinkedInTips",
+-    "#Leadership"
+-  ];
+-
+-  if (apiKey) {
+-    hashtags.push("#AIGenerated");
+-  }
+-
+-  return {
+-    post: finalPost,
+-    hooks,
+-    hashtags
+-  };
+-}
++/**
++ * @fileOverview Implementation of the LinkedIn Post Generator Agent.
++ * Uses a Hugging Face-hosted LLM to generate genuinely tailored, high-converting posts.
++ */
++import 'server-only';
++import { chatCompleteJSON } from '@/lib/huggingface';
++
++export interface LinkedInGeneratorResult {
++  post: string;
++  hooks: string[];
++  hashtags: string[];
++}
++
++const SYSTEM_PROMPT = `You are a viral LinkedIn ghostwriter who has written posts for top creators in tech, business, and career growth. You write in short punchy lines, use line breaks for rhythm, and avoid generic corporate fluff.
++
++Given a topic, write ONE complete, ready-to-publish LinkedIn post about it, plus supporting material.
++
++Return ONLY a valid JSON object with exactly these keys:
++{
++  "post": "<the full, ready-to-publish post including a strong hook line, body with line breaks (\\n), and a closing call-to-action, ending with 4-6 relevant hashtags>",
++  "hooks": ["3 alternative opening hook lines the user could swap in, each a different angle/archetype (e.g. contrarian, story, listicle)"],
++  "hashtags": ["5-7 relevant hashtags without duplicating generic ones like #motivation"]
++}
++No markdown formatting, no commentary outside the JSON.`;
++
++export async function runLinkedInGenerator(input: string): Promise<LinkedInGeneratorResult> {
++  const topic = input.trim() || 'career growth in tech';
++
++  const result = await chatCompleteJSON<LinkedInGeneratorResult>(
++    [
++      { role: 'system', content: SYSTEM_PROMPT },
++      { role: 'user', content: `Topic: ${topic}` },
++    ],
++    { temperature: 0.85, maxTokens: 1200 }
++  );
++
++  return {
++    post: result.post || '',
++    hooks: Array.isArray(result.hooks) ? result.hooks : [],
++    hashtags: Array.isArray(result.hashtags) ? result.hashtags : [],
++  };
++}
+diff --git a/src/lib/agents/researchAgent.ts b/src/lib/agents/researchAgent.ts
+index b8de4d9..06c8e9e 100644
+--- a/src/lib/agents/researchAgent.ts
++++ b/src/lib/agents/researchAgent.ts
+@@ -1,129 +1,49 @@
+-/**
+- * @fileOverview Implementation of the Deep Research Agent.
+- * Uses a domain-aware prompt architecture to guarantee high-quality, structured reports.
+- */
+-
+-export interface ResearchResult {
+-  overview: string;
+-  keyInsights: string[];
+-  detailedAnalysis: string;
+-  conclusion: string;
+-}
+-
+-export async function runResearchAgent(input: string, apiKey?: string): Promise<ResearchResult> {
+-  // Simulate "Deep Research" multi-step thinking delay
+-  await new Promise(resolve => setTimeout(resolve, apiKey ? 500 : 3000));
+-
+-  const masterPrompt = `You are a Deep Research Agent.
+-Your goal is to generate a structured, accurate, and domain-aware research report.
+-
+-----------------------------------------
+-STEP 1: Understand the Query
+-- Identify the domain of the query (e.g., Science, Technology, Business, Biology, etc.)
+-- Adapt your explanation style based on the domain
+-- DO NOT assume every query is about AI or technology
+-
+-----------------------------------------
+-STEP 2: Generate Structured Report
+-
+-Follow this EXACT format requirements, but return as a valid JSON object.
+-
+-OUTPUT FORMAT (MANDATORY JSON):
+-Return ONLY a valid JSON object with the following keys:
+-{
+-  "overview": "4–5 lines explaining the topic clearly and correctly",
+-  "keyInsights": ["4-6 important takeaways relevant to the topic (no generic buzzwords)"],
+-  "detailedAnalysis": "Markdown formatted string containing the following subsections:
+-    ### 3.1 Background / Context
+-    - What is this concept?
+-    - Basic explanation
+-    
+-    ### 3.2 How It Works (MANDATORY for scientific topics)
+-    - Explain mechanism / process step-by-step
+-    
+-    ### 3.3 Key Factors / Components
+-    - Important elements involved
+-    
+-    ### 3.4 Real-World Examples
+-    - Practical or observable examples
+-    
+-    ### 3.5 Common Misconceptions (if applicable)
+-    - Clarify misunderstandings",
+-  "conclusion": "Clear and simple closing"
+-}
+-
+-----------------------------------------
+-STRICT RULES:
+-- NEVER force unrelated domains (e.g., don’t turn biology into AI)
+-- NO buzzwords unless relevant
+-- NO generic statements
+-- Ensure factual correctness
+-- Adapt explanation depth based on question complexity
+-- Keep language clear and human-understandable
+-
+-----------------------------------------
+-Now generate the report for: ${input}`;
+-
+-  if (apiKey && apiKey.startsWith('AIza')) {
+-    try {
+-      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
+-        method: 'POST',
+-        headers: { 'Content-Type': 'application/json' },
+-        body: JSON.stringify({
+-          contents: [{ parts: [{ text: masterPrompt }] }],
+-          generationConfig: { 
+-            responseMimeType: "application/json",
+-            temperature: 0.7,
+-            topP: 0.95,
+-            topK: 40
+-          }
+-        })
+-      });
+-
+-      if (!response.ok) throw new Error('Gemini API call failed');
+-      
+-      const data = await response.json();
+-      const text = data.candidates[0].content.parts[0].text;
+-      return JSON.parse(text);
+-    } catch (e) {
+-      console.warn("Live Gemini call failed, falling back to Domain-Aware Mock", e);
+-    }
+-  }
+-
+-  // Domain-aware mock logic
+-  const query = input.toLowerCase();
+-  let domain = "General Knowledge";
+-  let howItWorks = "### 3.2 Process Overview\nThe fundamental mechanism involves a series of coordinated interactions designed to achieve a specific outcome based on the constraints of the environment.";
+-  let insights = [
+-    "Contextual Relevance: The importance of this topic is directly tied to its immediate environment.",
+-    "Fundamental Stability: Core principles have remained unchanged despite modern iterations.",
+-    "Interdisciplinary Impact: This concept influences multiple fields beyond its primary domain."
+-  ];
+-
+-  if (query.includes('cell') || query.includes('plant') || query.includes('human') || query.includes('bio')) {
+-    domain = "Biology & Life Sciences";
+-    howItWorks = "### 3.2 Biological Mechanism\nCells utilize specific pathways to convert energy into biological signals. This involves a step-by-step interaction between proteins and chemical messengers.";
+-    insights = [
+-      "Homeostatic Balance: Life systems prioritize equilibrium over rapid growth.",
+-      "Genetic Blueprint: The underlying instructions dictate functional capacity.",
+-      "Adaptive Resilience: Biological entities evolve specific defenses against environmental stressors."
+-    ];
+-  } else if (query.includes('physics') || query.includes('gravity') || query.includes('atom')) {
+-    domain = "Physical Sciences";
+-    howItWorks = "### 3.2 Physical Laws & Mechanism\nThe interaction occurs through fundamental forces. Energy transfer is governed by the laws of thermodynamics, moving from states of high concentration to entropy.";
+-  } else if (query.includes('market') || query.includes('business') || query.includes('money')) {
+-    domain = "Business & Economics";
+-    howItWorks = "### 3.2 Economic Dynamics\nValue is determined by the intersection of supply and demand. Market efficiency is achieved through the transparent exchange of information between stakeholders.";
+-  }
+-
+-  return {
+-    overview: `This domain-aware research report explores ${input} within the context of ${domain}. Our analysis focuses on accuracy and clarity, stripping away generic industry buzzwords to provide a factual foundation for understanding this specific query.`,
+-    keyInsights: [
+-      ...insights,
+-      "Observational Evidence: Practical data supports the current theoretical frameworks.",
+-      "Scale-Dependent Variability: The rules governing this topic change significantly as the scale of operation increases."
+-    ],
+-    detailedAnalysis: `### 3.1 Background / Context\n${input} represents a significant area of study in ${domain}. It is characterized by its foundational role in how we understand complex systems and their predictable behaviors.\n\n${howItWorks}\n\n### 3.3 Key Components\nPrimary factors include: 1) Structural Integrity, 2) Input Sensitivity, and 3) Environmental Interaction. These elements must remain in sync for the system to function correctly.\n\n### 3.4 Real-World Examples\nWe see this in action daily within ${domain}, from small-scale laboratory observations to global industrial applications.\n\n### 3.5 Common Misconceptions\nMany people believe that ${input} is a simple, linear process. In reality, it is a multi-variant system that requires specific conditions to remain stable.`,
+-    conclusion: `Understanding ${input} requires a nuanced approach that respects its domain-specific constraints. By focusing on factual correctness and mechanistic clarity, we can better predict its future evolution and practical utility.`
+-  };
+-}
++/**
++ * @fileOverview Implementation of the Deep Research Agent.
++ * Uses a Hugging Face-hosted LLM with a domain-aware prompt to produce structured, factual reports.
++ */
++import 'server-only';
++import { chatCompleteJSON } from '@/lib/huggingface';
++
++export interface ResearchResult {
++  overview: string;
++  keyInsights: string[];
++  detailedAnalysis: string;
++  conclusion: string;
++}
++
++const SYSTEM_PROMPT = `You are a Deep Research Agent producing structured, accurate, domain-aware reports.
++
++STEP 1: Identify the actual domain of the query (Science, Technology, Business, Biology, History, etc.) and adapt your explanation style. Do NOT force every query into an AI/tech framing.
++
++STEP 2: Return ONLY a valid JSON object with exactly these keys:
++{
++  "overview": "4-5 sentences clearly and correctly explaining the topic",
++  "keyInsights": ["4-6 specific, non-generic takeaways relevant to this exact topic"],
++  "detailedAnalysis": "Markdown-formatted string with these subsections using ### headers: 3.1 Background / Context, 3.2 How It Works (mechanism/process, especially for scientific topics), 3.3 Key Factors / Components, 3.4 Real-World Examples, 3.5 Common Misconceptions (if applicable)",
++  "conclusion": "2-3 sentence clear, simple closing"
++}
++
++Rules: never force unrelated domains together, no buzzwords unless genuinely relevant, ensure factual correctness, adapt depth to question complexity. No commentary outside the JSON.`;
++
++export async function runResearchAgent(input: string): Promise<ResearchResult> {
++  const query = input.trim();
++  if (!query) {
++    throw new Error('Please enter a research topic or question.');
++  }
++
++  const result = await chatCompleteJSON<ResearchResult>(
++    [
++      { role: 'system', content: SYSTEM_PROMPT },
++      { role: 'user', content: `Research topic: ${query}` },
++    ],
++    { temperature: 0.4, maxTokens: 2200 }
++  );
++
++  return {
++    overview: result.overview || '',
++    keyInsights: Array.isArray(result.keyInsights) ? result.keyInsights : [],
++    detailedAnalysis: result.detailedAnalysis || '',
++    conclusion: result.conclusion || '',
++  };
++}
+diff --git a/src/lib/agents/resumeAnalyzer.ts b/src/lib/agents/resumeAnalyzer.ts
+index 49e4b3a..9d924e0 100644
+--- a/src/lib/agents/resumeAnalyzer.ts
++++ b/src/lib/agents/resumeAnalyzer.ts
+@@ -1,92 +1,57 @@
+-/**
+- * @fileOverview Implementation of the Resume Analyzer Agent logic.
+- * Features a rule-based ATS scoring system and structured analysis.
+- */
+-
+-export interface ResumeAnalysisResult {
+-  score: number;
+-  verdict: string;
+-  strengths: string[];
+-  weaknesses: string[];
+-  suggestions: string[];
+-  prediction: string;
+-  aiInsights?: string;
+-}
+-
+-const TECHNICAL_KEYWORDS = [
+-  'Python', 'React', 'TypeScript', 'Node.js', 'Machine Learning', 
+-  'AI', 'SQL', 'AWS', 'Docker', 'Kubernetes', 'Java', 'C++', 
+-  'Next.js', 'Firebase', 'PostgreSQL', 'Cloud', 'DevOps'
+-];
+-
+-export async function runResumeAnalyzer(input: string, apiKey?: string): Promise<ResumeAnalysisResult> {
+-  // Simulate processing delay
+-  await new Promise(resolve => setTimeout(resolve, 2000));
+-
+-  const lowerInput = input.toLowerCase();
+-  const isFile = input.includes('[FILE:');
+-  
+-  // 1. Rule-based scoring
+-  let score = isFile ? 40 : 20; // Start with higher base if file is uploaded
+-  
+-  // Keyword matching (Simulated for file, real for text)
+-  const foundKeywords = TECHNICAL_KEYWORDS.filter(k => lowerInput.includes(k.toLowerCase()));
+-  score += Math.min(40, foundKeywords.length * 5);
+-  
+-  // Structure checks
+-  if (lowerInput.includes('experience') || lowerInput.includes('work history')) score += 15;
+-  if (lowerInput.includes('project')) score += 10;
+-  if (lowerInput.includes('education')) score += 10;
+-  if (lowerInput.includes('skill')) score += 5;
+-  
+-  // Length/File check
+-  if (isFile) score += 10;
+-  else if (input.length > 500) score += 5;
+-  
+-  // Cap score at 100
+-  score = Math.min(100, score);
+-
+-  // 2. Determine Verdict
+-  let verdict = "⚠️ Needs Improvement";
+-  if (score >= 90) verdict = "🎯 Excellent";
+-  else if (score >= 75) verdict = "✅ Good";
+-  else if (score >= 50) verdict = "⚖️ Average";
+-
+-  // 3. Generate structured feedback
+-  const strengths = [];
+-  if (isFile) strengths.push("Proper PDF document formatting detected");
+-  if (foundKeywords.length > 5) strengths.push("Strong technical keyword density");
+-  if (lowerInput.includes('experience')) strengths.push("Clear work experience section");
+-  
+-  const weaknesses = [];
+-  if (foundKeywords.length < 3) weaknesses.push("Low technical keyword count for modern ATS");
+-  if (!lowerInput.includes('project')) weaknesses.push("Missing a dedicated projects section");
+-  if (score < 60) weaknesses.push("General lack of quantifiable achievements");
+-
+-  const suggestions = [
+-    "💡 Use more action verbs like 'Led', 'Developed', 'Optimized'",
+-    "💡 Add more industry-specific keywords relevant to the job description",
+-    "💡 Include links to a portfolio or GitHub if applicable",
+-    "💡 Quantify your achievements (e.g., 'Increased revenue by 20%')"
+-  ];
+-
+-  const prediction = score > 80 
+-    ? "High probability of passing initial ATS filters for technical roles." 
+-    : "Moderate to low risk of being filtered out. Consider targeted keyword optimization.";
+-
+-  // 4. AI Insights
+-  let aiInsights = "Connect a Gemini API key to unlock deep behavioral analysis and interview question predictions.";
+-  if (apiKey) {
+-    aiInsights = `✨ AI Analysis: ${isFile ? 'I have analyzed your uploaded PDF.' : ''} Your profile demonstrates a strong bias towards ${foundKeywords[0] || 'technical'} roles. We recommend adding details about your deployment pipelines and testing strategies.`;
+-  }
+-
+-  return {
+-    score,
+-    verdict,
+-    strengths,
+-    weaknesses,
+-    suggestions,
+-    prediction,
+-    aiInsights
+-  };
+-}
++/**
++ * @fileOverview Implementation of the Resume Analyzer Agent.
++ * Sends resume text to a Hugging Face-hosted LLM for a real ATS-style review.
++ */
++import 'server-only';
++import { chatCompleteJSON } from '@/lib/huggingface';
++
++export interface ResumeAnalysisResult {
++  score: number;
++  verdict: string;
++  strengths: string[];
++  weaknesses: string[];
++  suggestions: string[];
++  prediction: string;
++  aiInsights: string;
++}
++
++const SYSTEM_PROMPT = `You are an expert technical recruiter and ATS (Applicant Tracking System) specialist with 15 years of experience screening resumes for software, data, and product roles.
++
++Given the resume text below (and any extra context/job description the candidate supplied), produce a rigorous, honest evaluation. Do not be generically positive - call out real gaps.
++
++Return ONLY a valid JSON object with exactly these keys:
++{
++  "score": <integer 0-100, realistic ATS compatibility + quality score>,
++  "verdict": "<one short verdict, e.g. 'Good', 'Needs Improvement', 'Excellent', 'Average'>",
++  "strengths": ["3-5 specific strengths, referencing actual content from the resume"],
++  "weaknesses": ["3-5 specific weaknesses or gaps, referencing actual content"],
++  "suggestions": ["4-6 concrete, actionable improvement suggestions"],
++  "prediction": "<1-2 sentences predicting how this resume performs against ATS filters and human screeners for roles it targets>",
++  "aiInsights": "<2-3 sentences of deeper behavioral/career-trajectory analysis>"
++}
++No markdown, no commentary outside the JSON.`;
++
++export async function runResumeAnalyzer(input: string): Promise<ResumeAnalysisResult> {
++  const trimmed = input.trim();
++  if (!trimmed || trimmed.length < 20) {
++    throw new Error('Please provide resume text or upload a PDF with readable content before running the analyzer.');
++  }
++
++  const result = await chatCompleteJSON<ResumeAnalysisResult>(
++    [
++      { role: 'system', content: SYSTEM_PROMPT },
++      { role: 'user', content: `Resume content and context:\n\n${trimmed.slice(0, 12000)}` },
++    ],
++    { temperature: 0.3, maxTokens: 1400 }
++  );
++
++  return {
++    score: Math.max(0, Math.min(100, Math.round(Number(result.score) || 0))),
++    verdict: result.verdict || 'Analysis complete',
++    strengths: Array.isArray(result.strengths) ? result.strengths : [],
++    weaknesses: Array.isArray(result.weaknesses) ? result.weaknesses : [],
++    suggestions: Array.isArray(result.suggestions) ? result.suggestions : [],
++    prediction: result.prediction || '',
++    aiInsights: result.aiInsights || '',
++  };
++}
+diff --git a/src/lib/core/runAgent.ts b/src/lib/core/runAgent.ts
+deleted file mode 100644
+index cac6cf3..0000000
+--- a/src/lib/core/runAgent.ts
++++ /dev/null
+@@ -1,23 +0,0 @@
+-/**
+- * @fileOverview Central execution engine for running agents.
+- */
+-import { agentRegistry } from '../agents/agentRegistry';
+-
+-export async function runAgent(agentId: string, input: string, apiKey: string) {
+-  const agent = agentRegistry[agentId];
+-  
+-  if (!agent) {
+-    // Fallback for agents not yet fully integrated into registry
+-    console.warn(`Agent ${agentId} not found in registry. Using generic simulation.`);
+-    await new Promise(r => setTimeout(r, 1000));
+-    return `Simulated response for ${agentId}:\n\nYour input "${input.substring(0, 30)}..." has been processed successfully.`;
+-  }
+-
+-  try {
+-    const result = await agent.run(input, apiKey);
+-    return result;
+-  } catch (error) {
+-    console.error(`Error running agent ${agentId}:`, error);
+-    throw new Error(`Failed to execute ${agent.name}. Please try again.`);
+-  }
+-}
+diff --git a/src/lib/huggingface.ts b/src/lib/huggingface.ts
+new file mode 100644
+index 0000000..9faf8d1
+--- /dev/null
++++ b/src/lib/huggingface.ts
+@@ -0,0 +1,103 @@
++/**
++ * @fileOverview Server-only client for Hugging Face Inference Providers.
++ *
++ * Uses the OpenAI-compatible router endpoint (https://router.huggingface.co/v1/chat/completions),
++ * which dispatches to whichever backing provider (Novita, Together, Cerebras, etc.) currently
++ * serves the requested model fastest. This file must never be imported from a "use client"
++ * component — it reads a server-only secret (HUGGINGFACE_API_KEY).
++ */
++import 'server-only';
++
++const HF_ROUTER_URL = 'https://router.huggingface.co/v1/chat/completions';
++
++// A capable, widely-available instruction-tuned model on the router's free tier.
++// Falls back to a second model if the first is temporarily unavailable/overloaded.
++const PRIMARY_MODEL = 'meta-llama/Llama-3.3-70B-Instruct';
++const FALLBACK_MODEL = 'Qwen/Qwen2.5-72B-Instruct';
++
++export interface ChatMessage {
++  role: 'system' | 'user' | 'assistant';
++  content: string;
++}
++
++interface ChatCompleteOptions {
++  temperature?: number;
++  maxTokens?: number;
++  jsonMode?: boolean;
++  model?: string;
++}
++
++async function callRouter(model: string, messages: ChatMessage[], options: ChatCompleteOptions) {
++  const apiKey = process.env.HUGGINGFACE_API_KEY;
++  if (!apiKey) {
++    throw new Error('HUGGINGFACE_API_KEY is not configured on the server.');
++  }
++
++  const body: Record<string, any> = {
++    model,
++    messages,
++    temperature: options.temperature ?? 0.4,
++    max_tokens: options.maxTokens ?? 1800,
++  };
++
++  if (options.jsonMode) {
++    body.response_format = { type: 'json_object' };
++  }
++
++  const response = await fetch(HF_ROUTER_URL, {
++    method: 'POST',
++    headers: {
++      'Content-Type': 'application/json',
++      Authorization: `Bearer ${apiKey}`,
++    },
++    body: JSON.stringify(body),
++  });
++
++  if (!response.ok) {
++    const errText = await response.text().catch(() => '');
++    throw new Error(`Hugging Face router error (${response.status}): ${errText.slice(0, 300)}`);
++  }
++
++  const data = await response.json();
++  const text: string | undefined = data?.choices?.[0]?.message?.content;
++  if (!text) {
++    throw new Error('Hugging Face router returned an empty response.');
++  }
++  return text;
++}
++
++/**
++ * Sends a chat completion request. Tries the primary model, and if it errors
++ * (e.g. temporarily overloaded/unavailable), retries once against the fallback model.
++ */
++export async function chatComplete(messages: ChatMessage[], options: ChatCompleteOptions = {}): Promise<string> {
++  const model = options.model ?? PRIMARY_MODEL;
++  try {
++    return await callRouter(model, messages, options);
++  } catch (err) {
++    if (model === PRIMARY_MODEL) {
++      console.warn('Primary HF model failed, retrying with fallback model:', err);
++      return await callRouter(FALLBACK_MODEL, messages, options);
++    }
++    throw err;
++  }
++}
++
++/**
++ * Convenience helper for agents that need strict JSON back. Strips markdown code fences
++ * defensively (some models wrap JSON in ```json blocks despite instructions) and parses it.
++ */
++export async function chatCompleteJSON<T = any>(messages: ChatMessage[], options: ChatCompleteOptions = {}): Promise<T> {
++  const raw = await chatComplete(messages, { ...options, jsonMode: true });
++  const cleaned = raw.trim().replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```\s*$/i, '');
++  try {
++    return JSON.parse(cleaned) as T;
++  } catch (err) {
++    // Some providers ignore response_format; try to salvage the first {...} block.
++    const match = cleaned.match(/\{[\s\S]*\}/);
++    if (match) {
++      return JSON.parse(match[0]) as T;
++    }
++    throw new Error('Model did not return valid JSON.');
++  }
++}
+diff --git a/src/lib/pdfExtract.ts b/src/lib/pdfExtract.ts
+new file mode 100644
+index 0000000..8fe6d3a
+--- /dev/null
++++ b/src/lib/pdfExtract.ts
+@@ -0,0 +1,12 @@
++/**
++ * @fileOverview Server-only helper to extract plain text from an uploaded PDF buffer.
++ */
++import 'server-only';
++
++export async function extractPdfText(buffer: Buffer): Promise<string> {
++  // Lazy import: pdf-parse touches the filesystem at module load in some environments,
++  // so we only load it when actually needed (inside a server route handler).
++  const pdfParse = (await import('pdf-parse')).default;
++  const data = await pdfParse(buffer);
++  return (data.text || '').trim();
++}
+diff --git a/src/lib/runAgentClient.ts b/src/lib/runAgentClient.ts
+new file mode 100644
+index 0000000..3401e1d
+--- /dev/null
++++ b/src/lib/runAgentClient.ts
+@@ -0,0 +1,43 @@
++/**
++ * @fileOverview Client-side helper for invoking the /api/agents/run route.
++ * Safe to import from "use client" components — contains no secrets.
++ */
++
++export interface RunAgentClientParams {
++  agentId: string;
++  input: string;
++  file?: File | null;
++  agentName?: string;
++  agentDescription?: string;
++  agentPromptTemplate?: string;
++}
++
++export async function runAgentClient({
++  agentId,
++  input,
++  file,
++  agentName,
++  agentDescription,
++  agentPromptTemplate,
++}: RunAgentClientParams): Promise<any> {
++  const formData = new FormData();
++  formData.append('agentId', agentId);
++  formData.append('input', input);
++  if (file) formData.append('file', file);
++  if (agentName) formData.append('agentName', agentName);
++  if (agentDescription) formData.append('agentDescription', agentDescription);
++  if (agentPromptTemplate) formData.append('agentPromptTemplate', agentPromptTemplate);
++
++  const res = await fetch('/api/agents/run', {
++    method: 'POST',
++    body: formData,
++  });
++
++  const data = await res.json().catch(() => ({}));
++
++  if (!res.ok) {
++    throw new Error(data?.error || 'Agent execution failed. Please try again.');
++  }
++
++  return data.result;
++}
