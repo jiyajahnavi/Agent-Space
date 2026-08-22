@@ -4,6 +4,7 @@ import { Navbar } from '@/components/navbar';
 import { Toaster } from '@/components/ui/toaster';
 import { AgentsProvider } from '@/context/agents-context';
 import { AuthProvider } from '@/context/auth-context';
+import { FollowProvider } from '@/context/follow-context';
 
 export const metadata: Metadata = {
   title: 'AgentSpace | The Ecosystem for AI Agents',
@@ -24,13 +25,15 @@ export default function RootLayout({
       </head>
       <body className="font-body antialiased bg-background text-foreground min-h-screen">
         <AuthProvider>
-          <AgentsProvider>
-            <div className="relative flex min-h-screen flex-col">
-              <Navbar />
-              <main className="flex-1">{children}</main>
-            </div>
-            <Toaster />
-          </AgentsProvider>
+          <FollowProvider>
+            <AgentsProvider>
+              <div className="relative flex min-h-screen flex-col">
+                <Navbar />
+                <main className="flex-1">{children}</main>
+              </div>
+              <Toaster />
+            </AgentsProvider>
+          </FollowProvider>
         </AuthProvider>
       </body>
     </html>

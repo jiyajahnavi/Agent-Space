@@ -3,7 +3,7 @@
 import { useParams } from 'next/navigation';
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { Mail, MapPin, Link as LinkIcon, Twitter, Users, Star, BookOpen, GitBranch, GitPullRequest, CircleDot, Clock, User, Plus, UserPlus, UserCheck } from 'lucide-react';
+import { Mail, MapPin, Link as LinkIcon, Twitter, Users, Star, BookOpen, GitBranch, GitPullRequest, CircleDot, Clock, User, Plus, UserPlus, UserCheck, ArrowRight } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -11,55 +11,72 @@ import { MOCK_USER } from '@/lib/data';
 import { AgentCard } from '@/components/agent-card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent } from '@/components/ui/card';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useAgents } from '@/context/agents-context';
 import { useAuth } from '@/context/auth-context';
+import { useFollow } from '@/context/follow-context';
 import { toast } from '@/hooks/use-toast';
 
 export default function ProfilePage() {
     const params = useParams();
     const { agents } = useAgents();
     const { profile } = useAuth();
+    const { followUser, unfollowUser, isFollowing, getFollowers, getFollowing } = useFollow();
 
-    const paramUser = typeof params.username === 'string' ? params.username : '';
+    const rawParamUser = typeof params.username === 'string' ? decodeURIComponent(params.username) : '';
+    const cleanParamUser = rawParamUser.replace(/^@/, '').trim();
     
     // Determine if viewing own profile
     const isSelf = !!(profile && (
-        !paramUser || 
-        profile.username.toLowerCase() === paramUser.toLowerCase() ||
-        profile.email?.split('@')[0].toLowerCase() === paramUser.toLowerCase()
+        !cleanParamUser || 
+        profile.username.toLowerCase().replace(/^@/, '') === cleanParamUser.toLowerCase() ||
+        profile.email?.split('@')[0].toLowerCase() === cleanParamUser.toLowerCase()
     ));
 
-    const isAddyDemo = paramUser.toLowerCase() === 'addy';
+    const isAddyDemo = cleanParamUser.toLowerCase() === 'addy';
 
-    // Construct active user profile
-    const user = isAddyDemo ? MOCK_USER : (isSelf && profile ? {
+    // Get real followers & following lists
+    const targetUsername = isAddyDemo ? 'addy' : (isSelf && profile ? profile.username : cleanParamUser || 'developer');
+    const followersList = getFollowers(targetUsername);
+    const followingList = getFollowing(targetUsername);
+
+    // Construct active user profile with real follower counts
+    const user = isAddyDemo ? {
+        name: 'Aditya Singh',
+        username: 'addy',
+        bio: 'Building the future of autonomous systems. Lead Engineer at NeuralStack. Open source contributor.',
+        avatar: 'https://picsum.photos/seed/alex/200/200',
+        followers: followersList.length,
+        following: followingList.length,
+        location: 'San Francisco, CA',
+        website: 'https://alexrivera.dev',
+        twitter: 'addy_ai',
+    } : (isSelf && profile ? {
         name: profile.fullName || profile.username,
         username: profile.username,
         bio: "AI Agent Builder on AgentSpace.",
         avatar: profile.avatarUrl,
-        followers: 0,
-        following: 0,
+        followers: followersList.length,
+        following: followingList.length,
         location: "",
         website: "",
         twitter: "",
     } : {
-        name: paramUser || 'Developer',
-        username: paramUser || 'developer',
+        name: cleanParamUser || 'Developer',
+        username: cleanParamUser || 'developer',
         bio: "AgentSpace AI Developer",
         avatar: "",
-        followers: 12,
-        following: 4,
+        followers: followersList.length,
+        following: followingList.length,
         location: "",
         website: "",
         twitter: "",
     });
 
-    const [isFollowing, setIsFollowing] = useState(false);
-    const [followerCount, setFollowerCount] = useState(user.followers);
+    const isUserFollowed = isFollowing(user.username);
 
-    useEffect(() => {
-        setFollowerCount(user.followers);
-    }, [user.followers]);
+    // Dialog state for viewing Followers/Following list
+    const [dialogMode, setDialogMode] = useState<'followers' | 'following' | null>(null);
 
     const handleFollowToggle = () => {
         if (!profile) {
@@ -71,16 +88,23 @@ export default function ProfilePage() {
             return;
         }
 
-        if (isFollowing) {
-            setIsFollowing(false);
-            setFollowerCount(prev => Math.max(0, prev - 1));
+        if (isSelf) {
+            toast({
+                title: "Action Not Allowed",
+                description: "You cannot follow your own profile.",
+                variant: "destructive"
+            });
+            return;
+        }
+
+        if (isUserFollowed) {
+            unfollowUser(user.username);
             toast({
                 title: "Unfollowed",
                 description: `You unfollowed @${user.username}.`,
             });
         } else {
-            setIsFollowing(true);
-            setFollowerCount(prev => prev + 1);
+            followUser(user.username, user.name);
             toast({
                 title: "Following",
                 description: `You are now following @${user.username}!`,
@@ -89,10 +113,19 @@ export default function ProfilePage() {
     };
 
     // Filter agents strictly belonging to this user
-    const targetUsername = isAddyDemo ? 'addy' : user.username;
-    const userAgents = agents.filter(a => 
-        a.owner.toLowerCase() === targetUsername.toLowerCase()
-    );
+    const userAgents = agents.filter(a => {
+        const ownerClean = a.owner.toLowerCase().replace(/^@/, '');
+        const targetClean = targetUsername.toLowerCase().replace(/^@/, '');
+        const paramClean = cleanParamUser.toLowerCase();
+        const profileClean = profile?.username?.toLowerCase().replace(/^@/, '');
+        const emailPrefix = profile?.email?.split('@')[0]?.toLowerCase();
+
+        return (
+            ownerClean === targetClean ||
+            ownerClean === paramClean ||
+            (isSelf && (ownerClean === profileClean || ownerClean === emailPrefix))
+        );
+    });
     const pinnedAgents = userAgents.slice(0, 4);
 
     // Calculate total stars accumulated across created agents
@@ -137,14 +170,14 @@ export default function ProfilePage() {
                         ) : (
                             <Button
                                 onClick={handleFollowToggle}
-                                variant={isFollowing ? "outline" : "default"}
+                                variant={isUserFollowed ? "outline" : "default"}
                                 className={`w-full h-9 rounded-xl font-medium gap-2 transition-all ${
-                                    isFollowing 
-                                    ? "border-muted-foreground/30 hover:bg-destructive/10 hover:text-destructive hover:border-destructive/30" 
+                                    isUserFollowed 
+                                    ? "border-muted-foreground/30 hover:bg-destructive/10 hover:text-destructive hover:border-destructive/30 text-foreground" 
                                     : "bg-primary hover:bg-primary/90 text-primary-foreground shadow-md"
                                 }`}
                             >
-                                {isFollowing ? (
+                                {isUserFollowed ? (
                                     <>
                                         <UserCheck className="h-4 w-4 text-emerald-500" />
                                         Following
@@ -159,15 +192,21 @@ export default function ProfilePage() {
                         )}
 
                         <div className="flex items-center gap-4 text-sm font-medium pt-1">
-                            <div className="flex items-center gap-1 hover:text-primary cursor-pointer transition-colors">
-                                <Users className="h-4 w-4 text-muted-foreground" />
-                                <span>{followerCount}</span>
+                            <button
+                                onClick={() => setDialogMode('followers')}
+                                className="flex items-center gap-1.5 hover:text-primary transition-colors cursor-pointer group"
+                            >
+                                <Users className="h-4 w-4 text-muted-foreground group-hover:text-primary" />
+                                <span className="font-bold">{user.followers}</span>
                                 <span className="text-muted-foreground font-normal">followers</span>
-                            </div>
-                            <div className="flex items-center gap-1 hover:text-primary cursor-pointer transition-colors">
-                                <span>{user.following}</span>
+                            </button>
+                            <button
+                                onClick={() => setDialogMode('following')}
+                                className="flex items-center gap-1.5 hover:text-primary transition-colors cursor-pointer group"
+                            >
+                                <span className="font-bold">{user.following}</span>
                                 <span className="text-muted-foreground font-normal">following</span>
-                            </div>
+                            </button>
                         </div>
 
                         {(user.location || user.website || user.twitter) && (
@@ -376,6 +415,86 @@ export default function ProfilePage() {
                     </Tabs>
                 </main>
             </div>
+
+            {/* Followers / Following List Modal */}
+            <Dialog open={dialogMode !== null} onOpenChange={(open) => !open && setDialogMode(null)}>
+                <DialogContent className="sm:max-w-md bg-card/95 backdrop-blur-xl border-border/80 rounded-2xl p-6 shadow-2xl">
+                    <DialogHeader>
+                        <DialogTitle className="text-lg font-headline font-bold flex items-center gap-2">
+                            <Users className="h-5 w-5 text-primary" />
+                            {dialogMode === 'followers' ? `Followers (${followersList.length})` : `Following (${followingList.length})`}
+                        </DialogTitle>
+                    </DialogHeader>
+
+                    <div className="space-y-2 mt-4 max-h-80 overflow-y-auto pr-1">
+                        {dialogMode === 'followers' && (
+                            followersList.length > 0 ? (
+                                followersList.map(follower => (
+                                    <Link
+                                        key={follower.username}
+                                        href={`/profile/${follower.username}`}
+                                        onClick={() => setDialogMode(null)}
+                                        className="flex items-center justify-between p-3 rounded-xl hover:bg-primary/10 transition-colors border border-transparent hover:border-primary/20 group"
+                                    >
+                                        <div className="flex items-center gap-3">
+                                            <Avatar className="h-9 w-9 border border-primary/30">
+                                                <AvatarImage src={follower.avatar} alt={follower.name} />
+                                                <AvatarFallback className="bg-primary/20 text-primary font-bold text-xs">
+                                                    {follower.name.charAt(0).toUpperCase()}
+                                                </AvatarFallback>
+                                            </Avatar>
+                                            <div>
+                                                <p className="text-sm font-bold group-hover:text-primary transition-colors">{follower.name}</p>
+                                                <p className="text-xs text-muted-foreground">@{follower.username}</p>
+                                            </div>
+                                        </div>
+                                        <ArrowRight className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all" />
+                                    </Link>
+                                ))
+                            ) : (
+                                <div className="py-12 text-center space-y-2">
+                                    <Users className="h-8 w-8 text-muted-foreground/40 mx-auto" />
+                                    <p className="text-sm font-bold">No followers yet</p>
+                                    <p className="text-xs text-muted-foreground">Be the first to follow @{user.username}!</p>
+                                </div>
+                            )
+                        )}
+
+                        {dialogMode === 'following' && (
+                            followingList.length > 0 ? (
+                                followingList.map(item => (
+                                    <Link
+                                        key={item.username}
+                                        href={`/profile/${item.username}`}
+                                        onClick={() => setDialogMode(null)}
+                                        className="flex items-center justify-between p-3 rounded-xl hover:bg-primary/10 transition-colors border border-transparent hover:border-primary/20 group"
+                                    >
+                                        <div className="flex items-center gap-3">
+                                            <Avatar className="h-9 w-9 border border-primary/30">
+                                                <AvatarImage src={item.avatar} alt={item.name} />
+                                                <AvatarFallback className="bg-primary/20 text-primary font-bold text-xs">
+                                                    {item.name.charAt(0).toUpperCase()}
+                                                </AvatarFallback>
+                                            </Avatar>
+                                            <div>
+                                                <p className="text-sm font-bold group-hover:text-primary transition-colors">{item.name}</p>
+                                                <p className="text-xs text-muted-foreground">@{item.username}</p>
+                                            </div>
+                                        </div>
+                                        <ArrowRight className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all" />
+                                    </Link>
+                                ))
+                            ) : (
+                                <div className="py-12 text-center space-y-2">
+                                    <Users className="h-8 w-8 text-muted-foreground/40 mx-auto" />
+                                    <p className="text-sm font-bold">Not following anyone yet</p>
+                                    <p className="text-xs text-muted-foreground">Developers followed by @{user.username} will appear here.</p>
+                                </div>
+                            )
+                        )}
+                    </div>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }

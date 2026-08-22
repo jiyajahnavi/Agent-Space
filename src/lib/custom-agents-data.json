@@ -1,0 +1,28 @@
+[
+  {
+    "id": "test2-repo-eoj7eh",
+    "name": "Test2 repo",
+    "owner": "onenonly066",
+    "ownerAvatar": "https://avatars.githubusercontent.com/u/230820365?v=4",
+    "description": "AI Agent for test2 repo",
+    "tags": [
+      "Custom",
+      "Autonomous"
+    ],
+    "type": "input-output",
+    "rating": 5,
+    "runs": "0",
+    "stars": 1,
+    "forks": 0,
+    "issuesCount": 0,
+    "pullRequestsCount": 0,
+    "category": "General",
+    "updatedAt": "Just now",
+    "githubUrl": "https://github.com/onenonly066/test2-repo",
+    "readme": "# test2 repo\n\nNo description provided.\n\n## Prompt Template\n```\ntest\n```",
+    "promptTemplate": "test",
+    "configYaml": "name: test2 repo\ntype: interactive\nowner: onenonly066",
+    "metadataJson": "{\"version\": \"1.0.0\", \"syncedWithGithub\": true}",
+    "usageCode": "// Example usage\nimport { runAgent } from './index';\n\nconst response = await runAgent({ input: \"your task\" });"
+  }
+]

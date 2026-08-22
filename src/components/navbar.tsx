@@ -16,6 +16,7 @@ import {
 import { useAuth } from '@/context/auth-context';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
+import { GlobalSearch } from '@/components/global-search';
 
 const CactusIcon = ({ className }: { className?: string }) => (
   <svg
@@ -168,12 +169,13 @@ export function Navbar() {
           </div>
         </div>
 
-        {/* Right Side: Create Agent Action Button */}
-        <div className="flex items-center gap-2">
-          <Button className="bg-primary hover:bg-primary/90 text-white font-medium shadow-sm h-9 px-4 rounded-xl" asChild>
+        {/* Right Side: Global Search + Create Agent Action Button */}
+        <div className="flex items-center gap-3 flex-1 justify-end max-w-md ml-auto">
+          <GlobalSearch />
+          <Button className="bg-primary hover:bg-primary/90 text-white font-medium shadow-sm h-9 px-4 rounded-xl shrink-0" asChild>
             <Link href="/create" className="flex items-center gap-1.5">
               <PlusCircle className="h-4 w-4" />
-              <span>Create</span>
+              <span className="hidden sm:inline">Create</span>
             </Link>
           </Button>
         </div>
