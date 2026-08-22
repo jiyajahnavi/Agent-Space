@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Star, GitFork, Play, Share2, Rocket, Clock, Shield, AlertCircle, FileCode, BookOpen, BarChart3, Code2, MessageSquare, Bot, Code, User, Send, CircleDot, GitPullRequest, MessageCircle, ExternalLink, RotateCcw, History, Plus, Trash2, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -13,8 +13,12 @@ import { Separator } from '@/components/ui/separator';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { AgentRunner } from '@/components/agent/AgentRunner';
 import { useAgents } from '@/context/agents-context';
+import { useAuth } from '@/context/auth-context';
+import { toast } from '@/hooks/use-toast';
 import { runAgentClient } from '@/lib/runAgentClient';
 import { FormattedMarkdown } from '@/components/agent/FormattedMarkdown';
+import { Agent } from '@/lib/types';
+import { cn } from '@/lib/utils';
 
 export interface ChatSession {
     id: string;
@@ -25,10 +29,111 @@ export interface ChatSession {
 
 export default function AgentDetailPage() {
     const params = useParams();
-    const { agents } = useAgents();
+    const router = useRouter();
+    const { profile } = useAuth();
+    const { agents, addAgent } = useAgents();
     const agent = (agents && agents.length > 0)
         ? (agents.find(a => a.id === params?.id) || agents[0])
         : null;
+
+    const [isForking, setIsForking] = useState(false);
+    const [isStarred, setIsStarred] = useState(false);
+    const [starsCount, setStarsCount] = useState(agent?.stars || 0);
+    const [forksCount, setForksCount] = useState(agent?.forks || 0);
+
+    // Sync star & fork count from localStorage & agent
+    useEffect(() => {
+        if (typeof window !== 'undefined' && agent?.id) {
+            const starredState = localStorage.getItem(`agentspace_starred_${agent.id}`);
+            setIsStarred(starredState === 'true');
+            setStarsCount(agent.stars || 0);
+
+            const savedForks = localStorage.getItem(`agentspace_forks_count_${agent.id}`);
+            if (savedForks) {
+                setForksCount(parseInt(savedForks, 10));
+            } else {
+                setForksCount(agent.forks || 0);
+            }
+        }
+    }, [agent?.id, agent?.stars, agent?.forks]);
+
+    const handleForkAgent = async () => {
+        if (!agent) return;
+
+        setIsForking(true);
+        try {
+            const currentOwner = profile?.username || profile?.fullName || 'community-developer';
+            const ownerAvatar = profile?.avatarUrl || 'https://picsum.photos/seed/user/200/200';
+            const uniqueId = `${agent.id}-fork-${Date.now().toString(36)}`;
+
+            const isParentFileInput = agent.inputType === 'file' ||
+                agent.id.startsWith('resume-analyzer') ||
+                agent.id.startsWith('legal-summarizer') ||
+                (agent.name || '').toLowerCase().includes('resume') ||
+                (agent.name || '').toLowerCase().includes('legal summarizer');
+
+            const forkedAgent: Agent = {
+                ...agent,
+                id: uniqueId,
+                name: `${agent.name} (Fork)`,
+                owner: currentOwner,
+                ownerAvatar: ownerAvatar,
+                inputType: isParentFileInput ? 'file' : (agent.inputType || 'text'),
+                forks: 0,
+                stars: 0,
+                runs: '0',
+                updatedAt: 'Just now',
+                description: agent.description ? `Forked from @${agent.owner}/${agent.name}. ${agent.description}` : `Forked from @${agent.owner}/${agent.name}`,
+            };
+
+            // 1. Add forked agent to global state & local storage
+            await addAgent(forkedAgent);
+
+            // 2. Increment original agent fork count
+            const newForkCount = forksCount + 1;
+            setForksCount(newForkCount);
+            localStorage.setItem(`agentspace_forks_count_${agent.id}`, newForkCount.toString());
+
+            toast({
+                title: "Agent Forked Successfully! 🍴",
+                description: `Created a copy of "${agent.name}" under @${currentOwner}. Redirecting...`,
+            });
+
+            // 3. Navigate to newly created forked agent page
+            router.push(`/agent/${uniqueId}`);
+        } catch (error: any) {
+            toast({
+                title: "Forking Failed",
+                description: error?.message || "Could not fork agent. Please try again.",
+                variant: "destructive",
+            });
+        } finally {
+            setIsForking(false);
+        }
+    };
+
+    const handleToggleStar = () => {
+        if (!agent) return;
+        const newState = !isStarred;
+        setIsStarred(newState);
+        localStorage.setItem(`agentspace_starred_${agent.id}`, String(newState));
+        const newCount = newState ? starsCount + 1 : Math.max(0, starsCount - 1);
+        setStarsCount(newCount);
+        toast({
+            title: newState ? "Starred Agent ⭐" : "Unstarred Agent",
+            description: newState ? `Added "${agent.name}" to your starred list.` : `Removed star from "${agent.name}".`,
+        });
+    };
+
+    const handleShareAgent = () => {
+        if (typeof window !== 'undefined') {
+            navigator.clipboard.writeText(window.location.href);
+            toast({
+                title: "Link Copied! 🔗",
+                description: "Agent URL copied to your clipboard.",
+            });
+        }
+    };
 
     if (!agent) {
         return (
@@ -234,13 +339,28 @@ export default function AgentDetailPage() {
                                     </Button>
                                 </a>
                             )}
-                            <Button variant="outline" size="sm" className="h-9 gap-2">
+                            <Button
+                                variant={isStarred ? "default" : "outline"}
+                                size="sm"
+                                className={cn("h-9 gap-2", isStarred && "bg-amber-500 hover:bg-amber-600 text-white border-amber-500")}
+                                onClick={handleToggleStar}
+                            >
+                                <Star className={cn("h-4 w-4", isStarred && "fill-current")} />
+                                {isStarred ? "Starred" : "Star"} ({starsCount})
+                            </Button>
+                            <Button variant="outline" size="sm" className="h-9 gap-2" onClick={handleShareAgent}>
                                 <Share2 className="h-4 w-4" />
                                 Share
                             </Button>
-                            <Button variant="outline" size="sm" className="h-9 gap-2">
-                                <GitFork className="h-4 w-4" />
-                                Fork
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                className="h-9 gap-2 border-primary/30 text-primary hover:bg-primary/10"
+                                onClick={handleForkAgent}
+                                disabled={isForking}
+                            >
+                                <GitFork className={cn("h-4 w-4", isForking && "animate-spin")} />
+                                {isForking ? "Forking..." : "Fork"} ({forksCount})
                             </Button>
                         </div>
                     </div>
@@ -584,13 +704,13 @@ console.log(response);`}
                                     <span className="text-muted-foreground flex items-center gap-2">
                                         <Star className="h-4 w-4" /> Stars
                                     </span>
-                                    <span className="font-bold">{agent.stars || 0}</span>
+                                    <span className="font-bold">{starsCount}</span>
                                 </div>
                                 <div className="flex justify-between items-center">
                                     <span className="text-muted-foreground flex items-center gap-2">
                                         <GitFork className="h-4 w-4" /> Forks
                                     </span>
-                                    <span className="font-bold">{agent.forks || 0}</span>
+                                    <span className="font-bold">{forksCount}</span>
                                 </div>
                                 <div className="flex justify-between items-center">
                                     <span className="text-muted-foreground flex items-center gap-2">

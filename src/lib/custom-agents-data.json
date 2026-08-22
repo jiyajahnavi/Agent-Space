@@ -24,5 +24,73 @@
     "configYaml": "name: test2 repo\ntype: interactive\nowner: onenonly066",
     "metadataJson": "{\"version\": \"1.0.0\", \"syncedWithGithub\": true}",
     "usageCode": "// Example usage\nimport { runAgent } from './index';\n\nconst response = await runAgent({ input: \"your task\" });"
+  },
+  {
+    "id": "resume-analyzer-fork-mt4ob7p8",
+    "name": "Resume Analyzer (Fork)",
+    "owner": "gb0754368",
+    "ownerAvatar": "/avatars/avatar-5.png",
+    "description": "Forked from @addy/Resume Analyzer. Detailed analysis of resumes with ATS optimization tips and interview preparation help.",
+    "tags": [
+      "Career",
+      "HR",
+      "Analysis"
+    ],
+    "type": "input-output",
+    "rating": 9.2,
+    "runs": "0",
+    "stars": 0,
+    "forks": 0,
+    "issuesCount": 12,
+    "pullRequestsCount": 4,
+    "category": "Career",
+    "updatedAt": "Just now",
+    "readme": "# Resume Analyzer 🚀\n\nMaximize your job search potential with our high-fidelity ATS optimization engine.\n\n### Key Features\n- **ATS Compatibility Scoring**: Instant feedback on how well your resume will perform in automated tracking systems.\n- **Keyword Optimization**: Automatic identification of missing technical and behavioral keywords.\n- **Section Analysis**: Deep dive into Experience, Projects, and Education formatting.\n- **PDF Support**: Direct parsing of professional PDF documents for realistic simulation.\n\n### How to Use\n1. Upload your PDF resume or paste the text content.\n2. Add optional context about the job you are targeting.\n3. Click \"Run Agent\" to see your score and actionable suggestions.\n\n*Pro Tip: Connect your Gemini API key to unlock deep behavioral analysis and custom interview questions tailored specifically to your profile.*",
+    "promptTemplate": "Analyze this resume for ATS compatibility.",
+    "configYaml": "name: Resume Analyzer\ntype: input-output\ncategory: Career",
+    "metadataJson": "{\"version\": \"1.0.0\"}",
+    "usageCode": "// Example usage\nconst response = await agent.run({ text: resumeText });",
+    "issues": [
+      {
+        "id": "1",
+        "title": "Performance degradation on long inputs",
+        "author": "dev_guru",
+        "status": "open",
+        "createdAt": "2 days ago",
+        "commentsCount": 3
+      },
+      {
+        "id": "2",
+        "title": "Add support for French language",
+        "author": "global_user",
+        "status": "open",
+        "createdAt": "5 days ago",
+        "commentsCount": 0
+      },
+      {
+        "id": "3",
+        "title": "Fix CSS hydration mismatch in sidebar",
+        "author": "ui_expert",
+        "status": "closed",
+        "createdAt": "1 week ago",
+        "commentsCount": 12
+      }
+    ],
+    "pullRequests": [
+      {
+        "id": "1",
+        "title": "feat: Implement batch processing",
+        "author": "speed_demon",
+        "status": "open",
+        "createdAt": "1 day ago"
+      },
+      {
+        "id": "2",
+        "title": "fix: Correct regex for email validation",
+        "author": "bug_hunter",
+        "status": "merged",
+        "createdAt": "3 days ago"
+      }
+    ]
   }
 ]

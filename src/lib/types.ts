@@ -25,6 +25,7 @@ export type Agent = {
   description: string;
   tags: string[];
   type: AgentType;
+  inputType?: 'text' | 'file';
   rating: number;
   runs: string;
   stars: number;

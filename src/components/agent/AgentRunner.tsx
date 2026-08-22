@@ -30,7 +30,11 @@ export function AgentRunner({ agentId }: AgentRunnerProps) {
     const [output, setOutput] = useState<any>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
-    const isFileInput = FILE_INPUT_AGENTS.has(agentId);
+    const isFileInput = agentMeta?.inputType === 'file' ||
+        FILE_INPUT_AGENTS.has(agentId) ||
+        Array.from(FILE_INPUT_AGENTS).some(id => agentId.startsWith(id)) ||
+        (agentMeta?.name || '').toLowerCase().includes('resume') ||
+        (agentMeta?.name || '').toLowerCase().includes('legal summarizer');
 
     // Persistent storage: Load saved input/output from localStorage on mount
     useEffect(() => {
