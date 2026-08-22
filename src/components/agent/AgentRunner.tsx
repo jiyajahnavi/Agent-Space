@@ -1,12 +1,13 @@
 /**
  * @fileOverview Orchestrates the agent execution flow: input capture, calling the
- * server-side /api/agents/run route (which talks to Hugging Face), and rendering output.
+ * server-side /api/agents/run route (which talks to Hugging Face or Gemini), and rendering output.
+ * Features persistent input/output memory across page refreshes and navigation.
  */
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
-import { Play, Terminal, Sparkles, Loader2, FileUp, FileText, X } from 'lucide-react';
+import { Play, Terminal, Sparkles, Loader2, FileUp, FileText, X, RotateCcw } from 'lucide-react';
 import { OutputDisplay } from './OutputDisplay';
 import { runAgentClient } from '@/lib/runAgentClient';
 import { toast } from '@/hooks/use-toast';
@@ -30,6 +31,40 @@ export function AgentRunner({ agentId }: AgentRunnerProps) {
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     const isFileInput = FILE_INPUT_AGENTS.has(agentId);
+
+    // Persistent storage: Load saved input/output from localStorage on mount
+    useEffect(() => {
+        if (typeof window !== 'undefined' && agentId) {
+            const saved = localStorage.getItem(`agentspace_runner_${agentId}`);
+            if (saved) {
+                try {
+                    const parsed = JSON.parse(saved);
+                    if (parsed.input) setInput(parsed.input);
+                    if (parsed.output) setOutput(parsed.output);
+                } catch (e) {
+                    console.error('Failed to parse saved runner state:', e);
+                }
+            }
+        }
+    }, [agentId]);
+
+    // Save input/output to localStorage whenever they update
+    useEffect(() => {
+        if (typeof window !== 'undefined' && agentId) {
+            if (input || output) {
+                localStorage.setItem(`agentspace_runner_${agentId}`, JSON.stringify({ input, output }));
+            }
+        }
+    }, [input, output, agentId]);
+
+    const handleClear = () => {
+        setInput('');
+        setFile(null);
+        setOutput(null);
+        if (typeof window !== 'undefined' && agentId) {
+            localStorage.removeItem(`agentspace_runner_${agentId}`);
+        }
+    };
 
     const handleRun = async () => {
         if (!isFileInput && !input.trim()) {
@@ -55,6 +90,26 @@ export function AgentRunner({ agentId }: AgentRunnerProps) {
                 agentPromptTemplate: agentMeta?.promptTemplate,
             });
             setOutput(result);
+
+            // Save execution run to history sessions
+            if (typeof window !== 'undefined' && agentId) {
+                const rawSessions = localStorage.getItem(`agentspace_sessions_${agentId}`);
+                let list: any[] = [];
+                if (rawSessions) {
+                    try { list = JSON.parse(rawSessions); } catch (e) { list = []; }
+                }
+                const executionSession = {
+                    id: 'session_' + Date.now(),
+                    title: (input || (file ? file.name : 'Agent Execution')).slice(0, 45),
+                    updatedAt: new Date().toISOString(),
+                    messages: [
+                        { role: 'user', text: input || (file ? `File uploaded: ${file.name}` : 'Run Execution') },
+                        { role: 'bot', text: typeof result === 'string' ? result : JSON.stringify(result) }
+                    ]
+                };
+                list = [executionSession, ...list];
+                localStorage.setItem(`agentspace_sessions_${agentId}`, JSON.stringify(list));
+            }
         } catch (error: any) {
             toast({ title: "Execution Failed", description: error.message, variant: "destructive" });
         } finally {
@@ -76,11 +131,23 @@ export function AgentRunner({ agentId }: AgentRunnerProps) {
     return (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 min-h-[500px]">
             <Card className="flex flex-col border-muted">
-                <CardHeader className="border-b py-3 px-6 bg-muted/20">
+                <CardHeader className="border-b py-3 px-6 bg-muted/20 flex flex-row items-center justify-between">
                     <CardTitle className="text-sm font-bold flex items-center gap-2">
                         <Terminal className="h-4 w-4" />
                         Execution Console
                     </CardTitle>
+                    {(input || output || file) && (
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={handleClear}
+                            className="h-7 text-xs gap-1.5 text-muted-foreground hover:text-foreground"
+                            title="Clear memory and start fresh"
+                        >
+                            <RotateCcw className="h-3.5 w-3.5" />
+                            Start Fresh
+                        </Button>
+                    )}
                 </CardHeader>
                 <CardContent className="flex-1 p-6 space-y-6">
                     {isFileInput ? (
@@ -145,7 +212,7 @@ export function AgentRunner({ agentId }: AgentRunnerProps) {
                     )}
                     <div className="flex items-center gap-2 text-[11px] text-muted-foreground bg-muted/20 rounded-lg px-3 py-2">
                         <Sparkles className="h-3.5 w-3.5 text-primary shrink-0" />
-                        Powered by a Hugging Face-hosted model. Runs server-side — no API key needed from you.
+                        Powered by AI Agent execution engine. Runs server-side.
                     </div>
                 </CardContent>
                 <CardFooter className="border-t p-4 flex justify-end">
@@ -166,7 +233,7 @@ export function AgentRunner({ agentId }: AgentRunnerProps) {
             </Card>
 
             <Card className="flex flex-col border-muted bg-muted/5 overflow-hidden">
-                <CardHeader className="border-b py-3 px-6 bg-muted/20">
+                <CardHeader className="border-b py-3 px-6 bg-muted/20 flex flex-row items-center justify-between">
                     <CardTitle className="text-sm font-bold flex items-center gap-2">
                         <Sparkles className="h-4 w-4 text-primary" />
                         Result Output
@@ -180,7 +247,7 @@ export function AgentRunner({ agentId }: AgentRunnerProps) {
                     ) : isProcessing ? (
                         <div className="h-full flex flex-col items-center justify-center text-center text-muted-foreground/60 py-12 gap-3">
                             <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                            <p className="text-sm">Running inference on Hugging Face...</p>
+                            <p className="text-sm">Running inference on server...</p>
                         </div>
                     ) : (
                         <div className="h-full flex flex-col items-center justify-center text-center text-muted-foreground/40 py-12">

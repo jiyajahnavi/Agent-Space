@@ -1,17 +1,18 @@
 /**
- * @fileOverview Direct Gemini API integration for AI Agent responses.
+ * @fileOverview Direct Gemini API integration for AI Agent responses with multi-turn history.
  * Uses GEMINI_API_KEY from environment variables to generate high-quality responses.
  */
 import 'server-only';
 
-export interface ChatMessage {
-  role: 'system' | 'user' | 'assistant';
-  content: string;
+export interface ChatHistoryItem {
+  role: string;
+  text: string;
 }
 
 export async function generateGeminiResponse(
   systemInstruction: string,
-  userPrompt: string
+  userPrompt: string,
+  history: ChatHistoryItem[] = []
 ): Promise<string> {
   const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_GENAI_API_KEY || '';
   if (!apiKey) {
@@ -24,6 +25,24 @@ export async function generateGeminiResponse(
     'gemini-2.0-flash',
     'gemini-1.5-flash',
   ];
+
+  // Build Gemini contents payload with chat history for multi-turn conversational memory
+  let contentsPayload: any[] = [];
+  if (history && history.length > 0) {
+    contentsPayload = history.map(item => ({
+      role: item.role === 'user' ? 'user' : 'model',
+      parts: [{ text: item.text }]
+    }));
+  }
+
+  // Ensure current user prompt is attached
+  const lastMsg = contentsPayload[contentsPayload.length - 1];
+  if (!lastMsg || lastMsg.role !== 'user' || lastMsg.parts?.[0]?.text !== userPrompt) {
+    contentsPayload.push({
+      role: 'user',
+      parts: [{ text: userPrompt }]
+    });
+  }
 
   let lastErrorMsg = '';
 
@@ -38,12 +57,7 @@ export async function generateGeminiResponse(
           system_instruction: {
             parts: [{ text: systemInstruction }]
           },
-          contents: [
-            {
-              role: 'user',
-              parts: [{ text: userPrompt }]
-            }
-          ],
+          contents: contentsPayload,
           generationConfig: {
             temperature: 0.7,
             maxOutputTokens: 2500,
@@ -66,17 +80,17 @@ export async function generateGeminiResponse(
     // Strategy 2: Call without system_instruction (embedded system prompt inside contents)
     try {
       const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
-      const combinedPrompt = `${systemInstruction}\n\nUser Request:\n${userPrompt}`;
+      const fallbackPayload = [
+        {
+          role: 'user',
+          parts: [{ text: `${systemInstruction}\n\nUser Request:\n${userPrompt}` }]
+        }
+      ];
       const response = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          contents: [
-            {
-              role: 'user',
-              parts: [{ text: combinedPrompt }]
-            }
-          ],
+          contents: contentsPayload.length > 1 ? contentsPayload : fallbackPayload,
           generationConfig: {
             temperature: 0.7,
             maxOutputTokens: 2500,

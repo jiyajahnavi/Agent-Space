@@ -10,6 +10,7 @@ export interface RunAgentClientParams {
   agentName?: string;
   agentDescription?: string;
   agentPromptTemplate?: string;
+  history?: any[];
 }
 
 export async function runAgentClient({
@@ -19,6 +20,7 @@ export async function runAgentClient({
   agentName,
   agentDescription,
   agentPromptTemplate,
+  history,
 }: RunAgentClientParams): Promise<any> {
   const formData = new FormData();
   formData.append('agentId', agentId);
@@ -27,6 +29,7 @@ export async function runAgentClient({
   if (agentName) formData.append('agentName', agentName);
   if (agentDescription) formData.append('agentDescription', agentDescription);
   if (agentPromptTemplate) formData.append('agentPromptTemplate', agentPromptTemplate);
+  if (history && history.length > 0) formData.append('history', JSON.stringify(history));
 
   const res = await fetch('/api/agents/run', {
     method: 'POST',

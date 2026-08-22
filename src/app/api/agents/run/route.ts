@@ -16,6 +16,16 @@ export async function POST(req: NextRequest) {
     const agentName = (formData.get('agentName') as string | null) || 'AI Agent';
     const agentDescription = (formData.get('agentDescription') as string | null) || '';
     const agentPromptTemplate = (formData.get('agentPromptTemplate') as string | null) || '';
+    const historyRaw = formData.get('history') as string | null;
+
+    let history: any[] = [];
+    if (historyRaw) {
+      try {
+        history = JSON.parse(historyRaw);
+      } catch (e) {
+        // ignore parse error
+      }
+    }
 
     if (typeof agentId !== 'string' || !agentId) {
       return NextResponse.json({ error: 'Missing agentId.' }, { status: 400 });
@@ -54,13 +64,13 @@ export async function POST(req: NextRequest) {
 
     // 1. If registered in agentRegistry (including our 8 target Gemini chat agents)
     if (agent) {
-      const result = await agent.run(combinedInput);
+      const result = await agent.run(combinedInput, history);
       return NextResponse.json({ result });
     }
 
     // 2. Fallback check for target Gemini chat agents by ID or Name
     if (isTargetChatAgent(agentId, agentName)) {
-      const result = await runGeminiChatAgent(agentId, combinedInput, agentName);
+      const result = await runGeminiChatAgent(agentId, combinedInput, agentName, history);
       return NextResponse.json({ result });
     }
 

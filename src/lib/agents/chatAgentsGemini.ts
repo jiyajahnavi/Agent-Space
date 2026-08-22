@@ -1,6 +1,6 @@
 /**
  * @fileOverview Gemini API execution handlers for the 8 Explore page Chat Agents.
- * Uses Gemini API to deliver high quality responses.
+ * Uses Gemini API to deliver high quality responses with multi-turn chat memory.
  */
 import 'server-only';
 import { generateGeminiResponse } from '../gemini';
@@ -62,9 +62,9 @@ Your goals:
 
   'cover-letter-gen': `You are a Senior Executive Recruiter and Resume Specialist.
 Your goals:
-1. Craft highly persuasive, tailored, and ATS-friendly cover letters.
-2. Match user skills to target job roles seamlessly.
-3. Structure the cover letter professionally with an attention-grabbing opening, strong body highlighting achievements, and a strong closing statement.` + LENGTH_DIRECTIVE,
+1. Write a highly persuasive, tailored, and ATS-friendly cover letter matching the user's skills to the target job role.
+2. OUTPUT ONLY THE COVER LETTER ITSELF.
+3. DO NOT include any introductory conversational filler (such as "Here is your cover letter:"), preambles, commentary, or postscript tips. Start directly with the cover letter header/salutation and end with the sign-off.`,
 
   'email-writer': `You are a Master Corporate Communications Copywriter.
 Your goals:
@@ -87,7 +87,12 @@ Your goals:
 2. Include Prep Time, Cook Time, Serving Size, Step-by-Step Instructions, and Chef Tips for plating or flavor enhancements.` + LENGTH_DIRECTIVE,
 };
 
-export async function runGeminiChatAgent(agentId: string, input: string, agentName?: string): Promise<string> {
+export async function runGeminiChatAgent(
+  agentId: string,
+  input: string,
+  agentName?: string,
+  history?: any[]
+): Promise<string> {
   const cleanId = (agentId || '').toLowerCase().replace(/[^a-z0-9-]/g, '');
   let systemPrompt = SYSTEM_PROMPTS[cleanId];
 
@@ -106,5 +111,5 @@ export async function runGeminiChatAgent(agentId: string, input: string, agentNa
     }
   }
 
-  return await generateGeminiResponse(systemPrompt, input);
+  return await generateGeminiResponse(systemPrompt, input, history);
 }

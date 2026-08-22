@@ -15,7 +15,7 @@ export interface AgentRegistryEntry {
   name: string;
   description: string;
   inputType: 'text' | 'file';
-  run: (input: string) => Promise<any>;
+  run: (input: string, history?: any[]) => Promise<any>;
 }
 
 export const agentRegistry: Record<string, AgentRegistryEntry> = {
@@ -28,29 +28,22 @@ export const agentRegistry: Record<string, AgentRegistryEntry> = {
   },
   'code-debugger': {
     id: 'code-debugger',
-    name: 'Code Debugger',
-    description: 'Identifies bugs and suggests fixes with detailed explanations',
+    name: 'Code Syntax Debugger',
+    description: 'Find syntax errors in code',
     inputType: 'text',
     run: (input) => runCodeDebugger(input),
   },
-  'code-debugger-pro': {
-    id: 'code-debugger-pro',
-    name: 'Code Debugger Pro',
-    description: 'Advanced Logic Fixer',
-    inputType: 'text',
-    run: (input) => runCodeDebugger(input),
-  },
-  'linkedin-poster': {
-    id: 'linkedin-poster',
-    name: 'LinkedIn Poster',
-    description: 'Engagement Growth Tool',
+  'linkedin-post-gen': {
+    id: 'linkedin-post-gen',
+    name: 'LinkedIn Post Generator',
+    description: 'Generate catchy LinkedIn posts',
     inputType: 'text',
     run: (input) => runLinkedInGenerator(input),
   },
-  'research-agent': {
-    id: 'research-agent',
-    name: 'Research Agent',
-    description: 'Deep multi-step reasoning and structured analysis engine',
+  'ai-research-agent': {
+    id: 'ai-research-agent',
+    name: 'AI Research Agent',
+    description: 'Comprehensive research and summary on any topic',
     inputType: 'text',
     run: (input) => runResearchAgent(input),
   },
@@ -68,55 +61,55 @@ export const agentRegistry: Record<string, AgentRegistryEntry> = {
     name: 'Interview Coach',
     description: 'Simulates high-stakes job interviews and provides real-time feedback on your answers.',
     inputType: 'text',
-    run: (input) => runGeminiChatAgent('interview-coach', input, 'Interview Coach'),
+    run: (input, history) => runGeminiChatAgent('interview-coach', input, 'Interview Coach', history),
   },
   'sql-query-gen': {
     id: 'sql-query-gen',
     name: 'SQL Query Gen',
     description: 'Translates natural language questions into perfect SQL queries for any database schema.',
     inputType: 'text',
-    run: (input) => runGeminiChatAgent('sql-query-gen', input, 'SQL Query Gen'),
+    run: (input, history) => runGeminiChatAgent('sql-query-gen', input, 'SQL Query Gen', history),
   },
   'startup-idea-gen': {
     id: 'startup-idea-gen',
     name: 'Startup Idea Gen',
     description: 'Generates high-potential startup ideas based on emerging market trends and tech gaps.',
     inputType: 'text',
-    run: (input) => runGeminiChatAgent('startup-idea-gen', input, 'Startup Idea Gen'),
+    run: (input, history) => runGeminiChatAgent('startup-idea-gen', input, 'Startup Idea Gen', history),
   },
   'cover-letter-gen': {
     id: 'cover-letter-gen',
     name: 'Cover Letter Gen',
     description: 'Writes tailored cover letters by matching your skills to a specific job description.',
     inputType: 'text',
-    run: (input) => runGeminiChatAgent('cover-letter-gen', input, 'Cover Letter Gen'),
+    run: (input, history) => runGeminiChatAgent('cover-letter-gen', input, 'Cover Letter Gen', history),
   },
   'email-writer': {
     id: 'email-writer',
     name: 'Email Writer',
     description: 'Crafts professional, persuasive emails for any scenario. Just describe the intent.',
     inputType: 'text',
-    run: (input) => runGeminiChatAgent('email-writer', input, 'Email Writer'),
+    run: (input, history) => runGeminiChatAgent('email-writer', input, 'Email Writer', history),
   },
   'travel-planner': {
     id: 'travel-planner',
     name: 'Travel Planner',
     description: 'Builds the perfect multi-city travel itinerary based on your budget and interests.',
     inputType: 'text',
-    run: (input) => runGeminiChatAgent('travel-planner', input, 'Travel Planner'),
+    run: (input, history) => runGeminiChatAgent('travel-planner', input, 'Travel Planner', history),
   },
   'fitness-planner': {
     id: 'fitness-planner',
     name: 'Fitness Planner',
-    description: 'Customizes weekly workout routines based on your goals, equipment, and schedule.',
+    description: 'Creates customized workout and meal plans tailored to your fitness goals.',
     inputType: 'text',
-    run: (input) => runGeminiChatAgent('fitness-planner', input, 'Fitness Planner'),
+    run: (input, history) => runGeminiChatAgent('fitness-planner', input, 'Fitness Planner', history),
   },
   'recipe-creator': {
     id: 'recipe-creator',
     name: 'Recipe Creator',
-    description: 'Suggests delicious recipes based only on the ingredients you have in your fridge.',
+    description: 'Generates mouthwatering recipes based on the ingredients in your fridge.',
     inputType: 'text',
-    run: (input) => runGeminiChatAgent('recipe-creator', input, 'Recipe Creator'),
+    run: (input, history) => runGeminiChatAgent('recipe-creator', input, 'Recipe Creator', history),
   },
 };

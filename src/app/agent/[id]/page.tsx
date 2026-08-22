@@ -1,9 +1,9 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
-import { Star, GitFork, Play, Share2, Rocket, Clock, Shield, AlertCircle, FileCode, BookOpen, BarChart3, Code2, MessageSquare, Bot, Code, User, Send, CircleDot, GitPullRequest, MessageCircle, ExternalLink } from 'lucide-react';
+import { Star, GitFork, Play, Share2, Rocket, Clock, Shield, AlertCircle, FileCode, BookOpen, BarChart3, Code2, MessageSquare, Bot, Code, User, Send, CircleDot, GitPullRequest, MessageCircle, ExternalLink, RotateCcw, History, Plus, Trash2, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -15,6 +15,13 @@ import { AgentRunner } from '@/components/agent/AgentRunner';
 import { useAgents } from '@/context/agents-context';
 import { runAgentClient } from '@/lib/runAgentClient';
 import { FormattedMarkdown } from '@/components/agent/FormattedMarkdown';
+
+export interface ChatSession {
+    id: string;
+    title: string;
+    updatedAt: string;
+    messages: { role: 'user' | 'bot', text: string }[];
+}
 
 export default function AgentDetailPage() {
     const params = useParams();
@@ -35,15 +42,117 @@ export default function AgentDetailPage() {
         );
     }
 
+    const [activeTab, setActiveTab] = useState('demo');
+    const [sessions, setSessions] = useState<ChatSession[]>([]);
+    const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
     const [userInput, setUserInput] = useState('');
     const [isProcessing, setIsProcessing] = useState(false);
     const [chatMessages, setChatMessages] = useState<{ role: 'user' | 'bot', text: string }[]>([]);
+
+    // 1. Load sessions list and active session on agent change
+    useEffect(() => {
+        if (typeof window !== 'undefined' && agent?.id) {
+            const rawSessions = localStorage.getItem(`agentspace_sessions_${agent.id}`);
+            let list: ChatSession[] = [];
+            if (rawSessions) {
+                try {
+                    list = JSON.parse(rawSessions);
+                } catch (e) {
+                    console.error('Failed to parse sessions history:', e);
+                }
+            }
+            setSessions(list);
+
+            const savedActiveId = localStorage.getItem(`agentspace_active_session_${agent.id}`);
+            if (savedActiveId && list.some(s => s.id === savedActiveId)) {
+                setActiveSessionId(savedActiveId);
+                const activeSession = list.find(s => s.id === savedActiveId);
+                if (activeSession) {
+                    setChatMessages(activeSession.messages);
+                }
+            } else if (list.length > 0) {
+                setActiveSessionId(list[0].id);
+                setChatMessages(list[0].messages);
+            } else {
+                setActiveSessionId(null);
+                setChatMessages([]);
+            }
+        }
+    }, [agent?.id]);
+
+    // 2. Helper to sync session list in localStorage
+    const updateSessionsWithMessages = (newMsgs: { role: 'user' | 'bot', text: string }[], targetSessionId?: string) => {
+        if (typeof window === 'undefined' || !agent?.id || newMsgs.length === 0) return;
+
+        let currentId = targetSessionId || activeSessionId;
+        if (!currentId) {
+            currentId = 'session_' + Date.now();
+            setActiveSessionId(currentId);
+            localStorage.setItem(`agentspace_active_session_${agent.id}`, currentId);
+        }
+
+        const firstUserMsg = newMsgs.find(m => m.role === 'user')?.text || 'New Session';
+        const sessionTitle = firstUserMsg.length > 45 ? firstUserMsg.slice(0, 45) + '...' : firstUserMsg;
+        const now = new Date().toISOString();
+
+        setSessions(prev => {
+            const exists = prev.some(s => s.id === currentId);
+            let updatedList: ChatSession[];
+            if (exists) {
+                updatedList = prev.map(s => s.id === currentId ? { ...s, title: sessionTitle, updatedAt: now, messages: newMsgs } : s);
+            } else {
+                updatedList = [{ id: currentId, title: sessionTitle, updatedAt: now, messages: newMsgs }, ...prev];
+            }
+            localStorage.setItem(`agentspace_sessions_${agent.id}`, JSON.stringify(updatedList));
+            return updatedList;
+        });
+    };
+
+    const handleClearChat = () => {
+        setChatMessages([]);
+        setActiveSessionId(null);
+        if (typeof window !== 'undefined' && agent?.id) {
+            localStorage.removeItem(`agentspace_active_session_${agent.id}`);
+        }
+    };
+
+    const handleResumeSession = (session: ChatSession) => {
+        setActiveSessionId(session.id);
+        setChatMessages(session.messages);
+        if (typeof window !== 'undefined' && agent?.id) {
+            localStorage.setItem(`agentspace_active_session_${agent.id}`, session.id);
+        }
+        setActiveTab('demo');
+    };
+
+    const handleDeleteSession = (sessionId: string, e: React.MouseEvent) => {
+        e.stopPropagation();
+        const updatedList = sessions.filter(s => s.id !== sessionId);
+        setSessions(updatedList);
+        if (typeof window !== 'undefined' && agent?.id) {
+            localStorage.setItem(`agentspace_sessions_${agent.id}`, JSON.stringify(updatedList));
+            if (activeSessionId === sessionId) {
+                handleClearChat();
+            }
+        }
+    };
 
     const handleSendMessage = async () => {
         if (!userInput.trim() || isProcessing) return;
         const promptText = userInput.trim();
         const newMessages = [...chatMessages, { role: 'user', text: promptText } as const];
+
+        let currentSessionId = activeSessionId;
+        if (!currentSessionId) {
+            currentSessionId = 'session_' + Date.now();
+            setActiveSessionId(currentSessionId);
+            if (typeof window !== 'undefined' && agent?.id) {
+                localStorage.setItem(`agentspace_active_session_${agent.id}`, currentSessionId);
+            }
+        }
+
         setChatMessages(newMessages);
+        updateSessionsWithMessages(newMessages, currentSessionId);
         setUserInput('');
         setIsProcessing(true);
 
@@ -54,14 +163,19 @@ export default function AgentDetailPage() {
                 agentName: agent.name,
                 agentDescription: agent.description,
                 agentPromptTemplate: agent.promptTemplate,
+                history: chatMessages,
             });
 
-            setChatMessages([...newMessages, { role: 'bot', text: responseText }]);
+            const finalMsgs = [...newMessages, { role: 'bot', text: responseText } as const];
+            setChatMessages(finalMsgs);
+            updateSessionsWithMessages(finalMsgs, currentSessionId);
         } catch (error: any) {
-            setChatMessages([
+            const errMsgs = [
                 ...newMessages,
-                { role: 'bot', text: error?.message || 'Agent execution failed. Please try again.' }
-            ]);
+                { role: 'bot', text: error?.message || 'Agent execution failed. Please try again.' } as const
+            ];
+            setChatMessages(errMsgs);
+            updateSessionsWithMessages(errMsgs, currentSessionId);
         } finally {
             setIsProcessing(false);
         }
@@ -73,45 +187,40 @@ export default function AgentDetailPage() {
                 <div className="container mx-auto px-4">
                     <div className="flex flex-col md:flex-row md:items-start justify-between gap-6">
                         <div className="space-y-4">
-                            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                                <Avatar className="h-5 w-5 border border-muted-foreground/20">
-                                    <AvatarFallback className="bg-muted">
-                                        <User className="h-3 w-3 text-muted-foreground" />
-                                    </AvatarFallback>
-                                </Avatar>
-                                <Link href={`/profile/${agent.owner}`} className="hover:underline hover:text-primary transition-colors">
-                                    {agent.owner}
-                                </Link>
-                                <span className="mx-1">/</span>
-                                <Link href={`/agent/${agent.id}`} className="font-bold text-foreground hover:underline cursor-pointer">
-                                    {agent.name}
-                                </Link>
-                                <Badge variant="outline" className="ml-2 py-0 h-5 px-2 text-[10px] uppercase font-bold text-muted-foreground">Public</Badge>
-                            </div>
-
-                            <div className="flex items-center gap-3">
-                                <h1 className="text-3xl font-headline font-bold">{agent.name}</h1>
-                                <Badge variant="secondary" className="bg-primary/20 text-primary border-none uppercase text-[10px] font-bold">
-                                    {agent.type}
+                            <div className="flex flex-wrap items-center gap-2">
+                                <Badge variant="secondary" className="gap-1 bg-primary/10 text-primary border-primary/20">
+                                    <Rocket className="h-3 w-3" />
+                                    v1.0.0
                                 </Badge>
+                                {agent.tags?.map((tag) => (
+                                    <Badge key={tag} variant="outline" className="text-xs">
+                                        {tag}
+                                    </Badge>
+                                ))}
                             </div>
-                            <p className="text-muted-foreground text-lg max-w-3xl">{agent.description}</p>
 
-                            <div className="flex flex-wrap items-center gap-4 text-sm">
-                                <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-muted border border-muted-foreground/10">
-                                    <Star className="h-4 w-4 text-yellow-500 fill-yellow-500" />
-                                    <span className="font-bold">{agent.stars}</span>
-                                    <span className="text-muted-foreground">Stars</span>
+                            <div>
+                                <h1 className="text-3xl font-extrabold tracking-tight flex items-center gap-3">
+                                    {agent.name}
+                                </h1>
+                                <p className="text-muted-foreground mt-2 max-w-2xl text-base">
+                                    {agent.description}
+                                </p>
+                            </div>
+
+                            <div className="flex items-center gap-4 text-xs text-muted-foreground pt-2">
+                                <div className="flex items-center gap-1.5">
+                                    <Avatar className="h-5 w-5">
+                                        <AvatarFallback className="text-[10px] bg-primary/20 text-primary">
+                                            {(agent as any).author?.[0]?.toUpperCase() || 'A'}
+                                        </AvatarFallback>
+                                    </Avatar>
+                                    <span>Created by <strong className="text-foreground">{(agent as any).author || 'Community'}</strong></span>
                                 </div>
-                                <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-muted border border-muted-foreground/10">
-                                    <GitFork className="h-4 w-4" />
-                                    <span className="font-bold">{agent.forks}</span>
-                                    <span className="text-muted-foreground">Forks</span>
-                                </div>
-                                <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-muted border border-muted-foreground/10">
-                                    <Play className="h-4 w-4 text-primary" />
-                                    <span className="font-bold">{agent.runs}</span>
-                                    <span className="text-muted-foreground">Runs</span>
+                                <Separator orientation="vertical" className="h-3" />
+                                <div className="flex items-center gap-1">
+                                    <Clock className="h-3.5 w-3.5 text-primary" />
+                                    <span>{agent.updatedAt || 'Recently updated'}</span>
                                 </div>
                             </div>
                         </div>
@@ -141,11 +250,20 @@ export default function AgentDetailPage() {
             <div className="container mx-auto px-4 py-8">
                 <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
                     <div className="lg:col-span-3 space-y-6">
-                        <Tabs defaultValue="demo" className="w-full">
+                        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
                             <TabsList className="bg-transparent border-b rounded-none w-full justify-start h-12 p-0 mb-6 gap-6 overflow-x-auto">
                                 <TabsTrigger value="demo" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none h-full px-2 gap-2">
                                     <Play className="h-4 w-4" />
                                     Live Demo
+                                </TabsTrigger>
+                                <TabsTrigger value="history" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none h-full px-2 gap-2">
+                                    <History className="h-4 w-4" />
+                                    History
+                                    {sessions.length > 0 && (
+                                        <Badge variant="secondary" className="ml-1 bg-primary/20 text-primary px-1.5 h-4 text-[10px] font-bold">
+                                            {sessions.length}
+                                        </Badge>
+                                    )}
                                 </TabsTrigger>
                                 <TabsTrigger value="readme" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none h-full px-2 gap-2">
                                     <BookOpen className="h-4 w-4" />
@@ -178,11 +296,23 @@ export default function AgentDetailPage() {
                             <TabsContent value="demo" className="mt-0 space-y-4">
                                 {agent.type === 'chat' && (
                                     <Card className="flex flex-col h-[500px] border-muted">
-                                        <CardHeader className="border-b py-3 px-6 bg-muted/20">
+                                        <CardHeader className="border-b py-3 px-6 bg-muted/20 flex flex-row items-center justify-between">
                                             <CardTitle className="text-sm font-bold flex items-center gap-2">
                                                 <MessageSquare className="h-4 w-4 text-primary" />
                                                 Chat Interface
                                             </CardTitle>
+                                            {chatMessages.length > 0 && (
+                                                <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    onClick={handleClearChat}
+                                                    className="h-7 text-xs gap-1.5 border-muted text-muted-foreground hover:text-foreground"
+                                                    title="Start fresh new chat session"
+                                                >
+                                                    <RotateCcw className="h-3.5 w-3.5" />
+                                                    New Chat
+                                                </Button>
+                                            )}
                                         </CardHeader>
                                         <CardContent className="flex-1 overflow-y-auto p-6 space-y-4">
                                             <div className="flex gap-3">
@@ -193,40 +323,56 @@ export default function AgentDetailPage() {
                                                     Hello! I'm the <strong>{agent.name}</strong>. How can I help you today?
                                                 </div>
                                             </div>
-                                            {chatMessages.map((msg, i) => (
-                                                <div key={i} className={`flex gap-3 ${msg.role === 'user' ? 'flex-row-reverse' : ''}`}>
-                                                    <div className={`h-8 w-8 rounded-full flex items-center justify-center shrink-0 ${msg.role === 'user' ? 'bg-secondary/20' : 'bg-primary/20'}`}>
-                                                        {msg.role === 'user' ? <User className="h-4 w-4" /> : <Bot className="h-4 w-4 text-primary" />}
-                                                    </div>
-                                                    <div className={`rounded-2xl p-4 text-sm max-w-[85%] ${msg.role === 'user' ? 'bg-primary text-primary-foreground rounded-tr-none' : 'bg-muted/50 rounded-tl-none'}`}>
-                                                        {msg.role === 'user' ? (
-                                                            msg.text
-                                                        ) : (
+
+                                            {chatMessages.map((msg, index) => (
+                                                <div key={index} className={`flex gap-3 ${msg.role === 'user' ? 'justify-end' : ''}`}>
+                                                    {msg.role === 'bot' && (
+                                                        <div className="h-8 w-8 rounded-full bg-primary/20 flex items-center justify-center shrink-0">
+                                                            <Bot className="h-4 w-4 text-primary" />
+                                                        </div>
+                                                    )}
+                                                    <div className={`p-3 text-sm max-w-[80%] rounded-2xl ${msg.role === 'user' ? 'bg-primary text-primary-foreground rounded-tr-none' : 'bg-muted/50 rounded-tl-none'}`}>
+                                                        {msg.role === 'bot' ? (
                                                             <FormattedMarkdown content={msg.text} />
+                                                        ) : (
+                                                            msg.text
                                                         )}
                                                     </div>
+                                                    {msg.role === 'user' && (
+                                                        <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center shrink-0">
+                                                            <User className="h-4 w-4 text-muted-foreground" />
+                                                        </div>
+                                                    )}
                                                 </div>
                                             ))}
                                             {isProcessing && (
-                                                <div className="flex gap-3 animate-pulse">
+                                                <div className="flex gap-3">
                                                     <div className="h-8 w-8 rounded-full bg-primary/20 flex items-center justify-center shrink-0">
-                                                        <Bot className="h-4 w-4 text-primary" />
+                                                        <Bot className="h-4 w-4 text-primary animate-pulse" />
                                                     </div>
-                                                    <div className="bg-muted/50 rounded-2xl rounded-tl-none p-3 text-sm">
-                                                        Processing...
+                                                    <div className="bg-muted/50 rounded-2xl rounded-tl-none p-3 text-sm max-w-[80%] flex items-center gap-2 text-muted-foreground">
+                                                        <span className="h-2 w-2 rounded-full bg-primary animate-ping" />
+                                                        Agent is generating response...
                                                     </div>
                                                 </div>
                                             )}
                                         </CardContent>
-                                        <CardFooter className="border-t p-4 bg-muted/10">
-                                            <form onSubmit={(e) => { e.preventDefault(); handleSendMessage(); }} className="flex w-full gap-2">
+                                        <CardFooter className="border-t p-4">
+                                            <form
+                                                onSubmit={(e) => {
+                                                    e.preventDefault();
+                                                    handleSendMessage();
+                                                }}
+                                                className="flex w-full items-center gap-2"
+                                            >
                                                 <Input
-                                                    placeholder="Type your message..."
+                                                    placeholder={`Message ${agent.name}...`}
                                                     value={userInput}
                                                     onChange={(e) => setUserInput(e.target.value)}
-                                                    className="bg-background border-muted"
+                                                    disabled={isProcessing}
+                                                    className="flex-1 bg-muted/20 border-muted focus-visible:ring-primary/30"
                                                 />
-                                                <Button type="submit" size="icon" disabled={isProcessing}>
+                                                <Button type="submit" size="icon" disabled={isProcessing || !userInput.trim()}>
                                                     <Send className="h-4 w-4" />
                                                 </Button>
                                             </form>
@@ -234,212 +380,232 @@ export default function AgentDetailPage() {
                                     </Card>
                                 )}
 
-                                {(agent.type === 'input-output' || agent.type === 'example') && (
+                                {agent.type !== 'chat' && (
                                     <AgentRunner agentId={agent.id} />
                                 )}
                             </TabsContent>
 
-                            <TabsContent value="readme" className="mt-0">
-                                <Card className="border-none shadow-none bg-transparent">
-                                    <CardContent className="p-6 prose prose-invert max-w-none bg-card border rounded-lg">
-                                        <div dangerouslySetInnerHTML={{ __html: agent.readme.replace(/#/g, '<h3 class="font-headline font-bold text-2xl mb-4">').replace(/\n/g, '<br/>') }} />
+                            <TabsContent value="history" className="mt-0 space-y-4">
+                                <Card className="border-muted">
+                                    <CardHeader className="border-b py-4 px-6 bg-muted/20 flex flex-row items-center justify-between">
+                                        <div>
+                                            <CardTitle className="text-base font-bold flex items-center gap-2">
+                                                <History className="h-5 w-5 text-primary" />
+                                                Agent Session & Execution History
+                                            </CardTitle>
+                                            <p className="text-xs text-muted-foreground mt-1">
+                                                All previous prompts and responses with <strong>{agent.name}</strong> are saved here. Click "Resume Chat" to continue any session.
+                                            </p>
+                                        </div>
+                                        <Button
+                                            size="sm"
+                                            onClick={() => {
+                                                handleClearChat();
+                                                setActiveTab('demo');
+                                            }}
+                                            className="gap-2 bg-primary hover:bg-primary/90 text-xs"
+                                        >
+                                            <Plus className="h-4 w-4" />
+                                            Start New Session
+                                        </Button>
+                                    </CardHeader>
+                                    <CardContent className="p-6">
+                                        {sessions.length === 0 ? (
+                                            <div className="text-center py-12 space-y-3">
+                                                <div className="h-12 w-12 rounded-full bg-muted flex items-center justify-center mx-auto text-muted-foreground/50">
+                                                    <Clock className="h-6 w-6" />
+                                                </div>
+                                                <h3 className="text-sm font-semibold">No session history yet</h3>
+                                                <p className="text-xs text-muted-foreground max-w-sm mx-auto">
+                                                    Start interacting with this agent in the Live Demo tab to save your prompts and responses automatically.
+                                                </p>
+                                            </div>
+                                        ) : (
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                {sessions.map((session) => {
+                                                    const isCurrentActive = session.id === activeSessionId;
+                                                    const lastMsg = session.messages[session.messages.length - 1];
+                                                    return (
+                                                        <div
+                                                            key={session.id}
+                                                            onClick={() => handleResumeSession(session)}
+                                                            className={`group p-4 rounded-xl border transition-all cursor-pointer space-y-3 ${
+                                                                isCurrentActive
+                                                                    ? 'border-primary/50 bg-primary/5 shadow-sm'
+                                                                    : 'border-muted/60 hover:border-primary/30 hover:bg-muted/10'
+                                                            }`}
+                                                        >
+                                                            <div className="flex items-start justify-between gap-2">
+                                                                <div className="space-y-1">
+                                                                    <div className="flex items-center gap-2">
+                                                                        <h4 className="text-sm font-bold text-foreground line-clamp-1 group-hover:text-primary transition-colors">
+                                                                            {session.title || 'Untitled Session'}
+                                                                        </h4>
+                                                                        {isCurrentActive && (
+                                                                            <Badge className="bg-primary/20 text-primary border-primary/30 text-[10px] h-4 px-1.5 font-bold">Active</Badge>
+                                                                        )}
+                                                                    </div>
+                                                                    <p className="text-[11px] text-muted-foreground flex items-center gap-1.5">
+                                                                        <Clock className="h-3 w-3" />
+                                                                        {new Date(session.updatedAt).toLocaleString()}
+                                                                    </p>
+                                                                </div>
+                                                                <Button
+                                                                    variant="ghost"
+                                                                    size="icon"
+                                                                    className="h-7 w-7 text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
+                                                                    onClick={(e) => handleDeleteSession(session.id, e)}
+                                                                    title="Delete session"
+                                                                >
+                                                                    <Trash2 className="h-3.5 w-3.5" />
+                                                                </Button>
+                                                            </div>
+
+                                                            <div className="bg-muted/30 rounded-lg p-2.5 text-xs text-muted-foreground line-clamp-2 font-mono">
+                                                                {lastMsg?.text || 'No messages'}
+                                                            </div>
+
+                                                            <div className="flex items-center justify-between pt-1 text-xs">
+                                                                <span className="text-muted-foreground font-medium flex items-center gap-1">
+                                                                    <MessageSquare className="h-3.5 w-3.5 text-primary" />
+                                                                    {session.messages.length} messages
+                                                                </span>
+                                                                <span className="text-primary font-bold flex items-center gap-1 group-hover:translate-x-0.5 transition-transform">
+                                                                    Resume Chat <ArrowRight className="h-3.5 w-3.5" />
+                                                                </span>
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        )}
                                     </CardContent>
                                 </Card>
                             </TabsContent>
 
+                            <TabsContent value="readme" className="mt-0">
+                                <Card className="p-6 space-y-4">
+                                    <h3 className="text-lg font-bold">About {agent.name}</h3>
+                                    <p className="text-muted-foreground text-sm leading-relaxed">
+                                        {agent.description}
+                                    </p>
+                                    <div className="pt-4 border-t space-y-2">
+                                        <h4 className="text-sm font-semibold">Capabilities</h4>
+                                        <ul className="list-disc list-inside text-sm text-muted-foreground space-y-1">
+                                            <li>Autonomous task execution</li>
+                                            <li>Context-aware response generation</li>
+                                            <li>Real-time prompt processing</li>
+                                        </ul>
+                                    </div>
+                                </Card>
+                            </TabsContent>
+
                             <TabsContent value="issues" className="mt-0">
-                                <div className="border rounded-lg bg-card overflow-hidden">
-                                    <div className="bg-muted px-6 py-4 border-b flex items-center justify-between">
-                                        <div className="flex items-center gap-4">
-                                            <div className="flex items-center gap-1 text-sm font-bold">
-                                                <CircleDot className="h-4 w-4 text-green-500" />
-                                                {agent.issues?.filter(i => i.status === 'open').length || 0} Open
-                                            </div>
-                                            <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                                                <Clock className="h-4 w-4" />
-                                                {agent.issues?.filter(i => i.status === 'closed').length || 0} Closed
-                                            </div>
-                                        </div>
-                                        <Button size="sm" className="bg-green-600 hover:bg-green-700 text-white font-bold h-8">New Issue</Button>
+                                <Card className="p-6 space-y-4">
+                                    <div className="flex justify-between items-center">
+                                        <h3 className="text-lg font-bold">Issues</h3>
+                                        <Button size="sm">New Issue</Button>
                                     </div>
-                                    <div className="divide-y">
-                                        {agent.issues && agent.issues.length > 0 ? (
-                                            agent.issues.map((issue) => (
-                                                <div key={issue.id} className="p-4 hover:bg-muted/30 transition-colors flex items-start gap-3">
-                                                    <CircleDot className={`h-4 w-4 mt-1 shrink-0 ${issue.status === 'open' ? 'text-green-500' : 'text-purple-500'}`} />
-                                                    <div className="flex-1 min-w-0">
-                                                        <h4 className="text-sm font-bold hover:text-primary cursor-pointer mb-1 truncate">{issue.title}</h4>
-                                                        <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
-                                                            <span>#{issue.id}</span>
-                                                            <span>opened {issue.createdAt} by</span>
-                                                            <span className="font-medium hover:text-primary cursor-pointer">{issue.author}</span>
-                                                        </div>
+                                    {agent.issues && agent.issues.length > 0 ? (
+                                        <div className="space-y-2">
+                                            {agent.issues.map((issue) => (
+                                                <div key={issue.id} className="flex items-center justify-between p-3 border rounded-lg">
+                                                    <div>
+                                                        <p className="text-sm font-medium">{issue.title}</p>
+                                                        <p className="text-xs text-muted-foreground">Opened by {issue.author}</p>
                                                     </div>
-                                                    {issue.commentsCount > 0 && (
-                                                        <div className="flex items-center gap-1 text-muted-foreground text-xs shrink-0">
-                                                            <MessageCircle className="h-3 w-3" />
-                                                            {issue.commentsCount}
-                                                        </div>
-                                                    )}
+                                                    <Badge variant={issue.status === 'open' ? 'default' : 'secondary'}>
+                                                        {issue.status}
+                                                    </Badge>
                                                 </div>
-                                            ))
-                                        ) : (
-                                            <div className="py-20 text-center flex flex-col items-center gap-2">
-                                                <CircleDot className="h-10 w-10 text-muted-foreground opacity-20" />
-                                                <h3 className="font-bold text-lg">No issues found</h3>
-                                                <p className="text-sm text-muted-foreground max-w-xs">There are no open or closed issues for this repository. Contributions are welcome!</p>
-                                            </div>
-                                        )}
-                                    </div>
-                                </div>
+                                            ))}
+                                        </div>
+                                    ) : (
+                                        <p className="text-muted-foreground text-sm">No open issues reported yet.</p>
+                                    )}
+                                </Card>
                             </TabsContent>
 
                             <TabsContent value="pulls" className="mt-0">
-                                <div className="border rounded-lg bg-card overflow-hidden">
-                                    <div className="bg-muted px-6 py-4 border-b flex items-center justify-between">
-                                        <div className="flex items-center gap-4">
-                                            <div className="flex items-center gap-1 text-sm font-bold">
-                                                <GitPullRequest className="h-4 w-4 text-green-500" />
-                                                {agent.pullRequests?.filter(p => p.status === 'open').length || 0} Open
-                                            </div>
-                                            <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                                                <Clock className="h-4 w-4" />
-                                                {agent.pullRequests?.filter(p => p.status !== 'open').length || 0} Closed
-                                            </div>
-                                        </div>
-                                        <Button size="sm" variant="outline" className="font-bold h-8">New Pull Request</Button>
+                                <Card className="p-6 space-y-4">
+                                    <div className="flex justify-between items-center">
+                                        <h3 className="text-lg font-bold">Pull Requests</h3>
+                                        <Button size="sm">New Pull Request</Button>
                                     </div>
-                                    <div className="divide-y">
-                                        {agent.pullRequests && agent.pullRequests.length > 0 ? (
-                                            agent.pullRequests.map((pr) => (
-                                                <div key={pr.id} className="p-4 hover:bg-muted/30 transition-colors flex items-start gap-3">
-                                                    <GitPullRequest className={`h-4 w-4 mt-1 shrink-0 ${pr.status === 'open' ? 'text-green-500' : pr.status === 'merged' ? 'text-purple-500' : 'text-red-500'}`} />
-                                                    <div className="flex-1 min-w-0">
-                                                        <h4 className="text-sm font-bold hover:text-primary cursor-pointer mb-1 truncate">{pr.title}</h4>
-                                                        <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
-                                                            <span>#{pr.id}</span>
-                                                            <span>opened {pr.createdAt} by</span>
-                                                            <span className="font-medium hover:text-primary cursor-pointer">{pr.author}</span>
-                                                        </div>
+                                    {agent.pullRequests && agent.pullRequests.length > 0 ? (
+                                        <div className="space-y-2">
+                                            {agent.pullRequests.map((pr) => (
+                                                <div key={pr.id} className="flex items-center justify-between p-3 border rounded-lg">
+                                                    <div>
+                                                        <p className="text-sm font-medium">{pr.title}</p>
+                                                        <p className="text-xs text-muted-foreground">Opened by {pr.author}</p>
                                                     </div>
+                                                    <Badge variant={pr.status === 'open' ? 'default' : 'secondary'}>
+                                                        {pr.status}
+                                                    </Badge>
                                                 </div>
-                                            ))
-                                        ) : (
-                                            <div className="py-20 text-center flex flex-col items-center gap-2">
-                                                <GitPullRequest className="h-10 w-10 text-muted-foreground opacity-20" />
-                                                <h3 className="font-bold text-lg">No pull requests found</h3>
-                                                <p className="text-sm text-muted-foreground max-w-xs">There are no open pull requests for this repository. Start contributing today!</p>
-                                            </div>
-                                        )}
-                                    </div>
-                                </div>
+                                            ))}
+                                        </div>
+                                    ) : (
+                                        <p className="text-muted-foreground text-sm">No active pull requests.</p>
+                                    )}
+                                </Card>
                             </TabsContent>
 
-                            <TabsContent value="code" className="mt-0 space-y-4">
-                                <div className="rounded-lg border bg-card overflow-hidden">
-                                    <div className="bg-muted px-4 py-2 border-b flex items-center justify-between">
-                                        <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
-                                            <FileCode className="h-4 w-4" />
-                                            agent.yaml
-                                        </div>
-                                    </div>
-                                    <pre className="p-4 text-sm font-code overflow-x-auto text-primary-foreground/80 leading-relaxed">
-                                        {agent.configYaml}
+                            <TabsContent value="code" className="mt-0">
+                                <Card className="p-6">
+                                    <pre className="bg-muted p-4 rounded-lg text-xs overflow-x-auto">
+                                        <code>{JSON.stringify(agent, null, 2)}</code>
                                     </pre>
-                                </div>
-
-                                <div className="rounded-lg border bg-card overflow-hidden">
-                                    <div className="bg-muted px-4 py-2 border-b flex items-center justify-between">
-                                        <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
-                                            <FileCode className="h-4 w-4" />
-                                            metadata.json
-                                        </div>
-                                    </div>
-                                    <pre className="p-4 text-sm font-code overflow-x-auto text-primary-foreground/80 leading-relaxed">
-                                        {agent.metadataJson}
-                                    </pre>
-                                </div>
+                                </Card>
                             </TabsContent>
 
-                            <TabsContent value="usage" className="mt-0 space-y-4">
-                                <Card className="bg-card border overflow-hidden">
-                                    <CardHeader className="bg-muted px-4 py-3 border-b">
-                                        <div className="flex items-center justify-between">
-                                            <CardTitle className="text-sm font-bold flex items-center gap-2">
-                                                <Code2 className="h-4 w-4 text-primary" />
-                                                SDK Usage
-                                            </CardTitle>
-                                            <Badge variant="outline" className="text-[10px] uppercase">TypeScript</Badge>
-                                        </div>
-                                    </CardHeader>
-                                    <CardContent className="p-0">
-                                        <pre className="p-6 text-sm font-code overflow-x-auto bg-black/40 text-primary-foreground/90 leading-relaxed">
-                                            {agent.usageCode}
-                                        </pre>
-                                    </CardContent>
+                            <TabsContent value="usage" className="mt-0">
+                                <Card className="p-6 space-y-4">
+                                    <h3 className="text-lg font-bold">Integration SDK</h3>
+                                    <p className="text-sm text-muted-foreground">Use this agent programmatically in your projects.</p>
+                                    <pre className="bg-muted p-4 rounded-lg text-xs font-mono overflow-x-auto">
+                                        {`import { AgentSpace } from '@agentspace/sdk';
+
+const agent = new AgentSpace.Agent('${agent.id}');
+const response = await agent.run({ input: 'Your prompt here' });
+console.log(response);`}
+                                    </pre>
                                 </Card>
                             </TabsContent>
                         </Tabs>
                     </div>
 
-                    <div className="space-y-8">
-                        <div className="space-y-3">
-                            <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">About</h3>
-                            <p className="text-sm leading-relaxed">{agent.description}</p>
-                        </div>
-
-                        <Separator />
-
-                        <div className="space-y-3">
-                            <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Tags</h3>
-                            <div className="flex flex-wrap gap-2">
-                                {agent.tags.map(tag => (
-                                    <Badge key={tag} variant="secondary" className="bg-primary/10 text-primary-foreground border-none">
-                                        {tag}
-                                    </Badge>
-                                ))}
-                            </div>
-                        </div>
-
-                        <Separator />
-
-                        <div className="space-y-3">
-                            <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Stats</h3>
-                            <div className="space-y-2">
-                                <div className="flex items-center justify-between text-sm">
-                                    <span className="flex items-center gap-2 text-muted-foreground">
-                                        <Star className="h-4 w-4" />
-                                        Stars
+                    <div className="space-y-6">
+                        <Card className="p-6 space-y-4">
+                            <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Agent Stats</h3>
+                            <div className="space-y-3 text-sm">
+                                <div className="flex justify-between items-center">
+                                    <span className="text-muted-foreground flex items-center gap-2">
+                                        <Star className="h-4 w-4" /> Stars
                                     </span>
-                                    <span className="font-medium">{agent.stars}</span>
+                                    <span className="font-bold">{agent.stars || 0}</span>
                                 </div>
-                                <div className="flex items-center justify-between text-sm">
-                                    <span className="flex items-center gap-2 text-muted-foreground">
-                                        <Play className="h-4 w-4" />
-                                        Type
+                                <div className="flex justify-between items-center">
+                                    <span className="text-muted-foreground flex items-center gap-2">
+                                        <GitFork className="h-4 w-4" /> Forks
                                     </span>
-                                    <span className="font-medium capitalize">{agent.type}</span>
+                                    <span className="font-bold">{agent.forks || 0}</span>
                                 </div>
-                                <div className="flex items-center justify-between text-sm">
-                                    <span className="flex items-center gap-2 text-muted-foreground">
-                                        <Clock className="h-4 w-4" />
-                                        Updated
+                                <div className="flex justify-between items-center">
+                                    <span className="text-muted-foreground flex items-center gap-2">
+                                        <BarChart3 className="h-4 w-4" /> Runs
                                     </span>
-                                    <span className="font-medium">{agent.updatedAt}</span>
+                                    <span className="font-bold">{(agent as any).runsCount || 0}</span>
+                                </div>
+                                <div className="flex justify-between items-center">
+                                    <span className="text-muted-foreground flex items-center gap-2">
+                                        <Shield className="h-4 w-4" /> License
+                                    </span>
+                                    <span className="font-bold">{(agent as any).license || 'MIT'}</span>
                                 </div>
                             </div>
-                        </div>
-
-                        <Separator />
-
-                        <div className="p-4 rounded-xl bg-primary/5 border border-primary/20 space-y-3">
-                            <h3 className="text-xs font-bold uppercase tracking-wider text-primary">Quality Score</h3>
-                            <div className="text-3xl font-headline font-bold">{agent.rating} <span className="text-sm text-muted-foreground font-normal">/ 10</span></div>
-                            <div className="w-full bg-muted rounded-full h-1.5 overflow-hidden">
-                                <div className="bg-primary h-full rounded-full" style={{ width: `${agent.rating * 10}%` }} />
-                            </div>
-                            <p className="text-[10px] text-muted-foreground">Calculated based on run success rate and feedback.</p>
-                        </div>
+                        </Card>
                     </div>
                 </div>
             </div>
