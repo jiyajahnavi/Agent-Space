@@ -16,8 +16,20 @@ import { runAgentClient } from '@/lib/runAgentClient';
 import { OutputDisplay } from '@/components/agent/OutputDisplay';
 import { cn } from '@/lib/utils';
 import { useAgents } from '@/context/agents-context';
+import { AuthGuard } from '@/components/auth-guard';
 
 export default function BattleModePage() {
+    return (
+        <AuthGuard
+            title="Authentication Required for Battle Mode"
+            description="Sign in with your Google or GitHub account to pit AI agents against each other in real-time execution battles."
+        >
+            <BattleModeContent />
+        </AuthGuard>
+    );
+}
+
+function BattleModeContent() {
     const { agents } = useAgents();
     const [prompt, setPrompt] = useState('');
     const [file, setFile] = useState<File | null>(null);

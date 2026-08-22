@@ -17,8 +17,20 @@ import { useAuth } from '@/context/auth-context';
 import { createGithubRepoForAgent } from '@/lib/github-sync';
 import { Agent } from '@/lib/types';
 import { useRouter } from 'next/navigation';
+import { AuthGuard } from '@/components/auth-guard';
 
 export default function CreateAgentPage() {
+    return (
+        <AuthGuard
+            title="Authentication Required to Create Agents"
+            description="Sign in with your Google or GitHub account to build, configure, and synchronize custom AI agents."
+        >
+            <CreateAgentContent />
+        </AuthGuard>
+    );
+}
+
+function CreateAgentContent() {
     const router = useRouter();
     const { addAgent } = useAgents();
     const { profile } = useAuth();

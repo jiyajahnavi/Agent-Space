@@ -17,9 +17,22 @@ import {
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
+import { AuthGuard } from '@/components/auth-guard';
+
 type SortOption = 'rating' | 'stars' | 'name';
 
 export default function ExplorePage() {
+    return (
+        <AuthGuard
+            title="Authentication Required to Explore"
+            description="Sign in with your Google or GitHub account to browse, filter, and run AI agents in the ecosystem."
+        >
+            <ExploreContent />
+        </AuthGuard>
+    );
+}
+
+function ExploreContent() {
     const { agents } = useAgents();
     const [activeCategory, setActiveCategory] = useState('All');
     const [activeType, setActiveType] = useState<AgentType | 'All'>('All');
