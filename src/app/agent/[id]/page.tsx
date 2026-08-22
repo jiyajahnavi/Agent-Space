@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
-import { Star, GitFork, Play, Share2, Rocket, Clock, Shield, AlertCircle, FileCode, BookOpen, BarChart3, Code2, MessageSquare, Bot, Code, User, Send, CircleDot, GitPullRequest, MessageCircle } from 'lucide-react';
+import { Star, GitFork, Play, Share2, Rocket, Clock, Shield, AlertCircle, FileCode, BookOpen, BarChart3, Code2, MessageSquare, Bot, Code, User, Send, CircleDot, GitPullRequest, MessageCircle, ExternalLink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -86,6 +86,14 @@ export default function AgentDetailPage() {
                         </div>
 
                         <div className="flex flex-wrap gap-2">
+                            {agent.githubUrl && (
+                                <a href={agent.githubUrl} target="_blank" rel="noopener noreferrer">
+                                    <Button variant="default" size="sm" className="h-9 gap-2 bg-slate-900 hover:bg-black text-white border border-slate-700 shadow-sm">
+                                        <ExternalLink className="h-4 w-4" />
+                                        View on GitHub
+                                    </Button>
+                                </a>
+                            )}
                             <Button variant="outline" size="sm" className="h-9 gap-2">
                                 <Share2 className="h-4 w-4" />
                                 Share

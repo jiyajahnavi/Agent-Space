@@ -40,6 +40,7 @@ export type Agent = {
   updatedAt: string;
   exampleInput?: string;
   exampleOutput?: string;
+  githubUrl?: string;
   issues?: Issue[];
   pullRequests?: PullRequest[];
 };

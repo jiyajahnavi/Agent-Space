@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from 'react';
-import { Sparkles, Globe, Lock, Plus, Shield, Loader2 } from 'lucide-react';
+import { Sparkles, Globe, Lock, Plus, Shield, Loader2, GitBranch, ExternalLink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -9,21 +9,30 @@ import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
+import { Checkbox } from '@/components/ui/checkbox';
 import { generateAgentConfiguration } from '@/ai/flows/generate-agent-configuration-flow';
 import { toast } from '@/hooks/use-toast';
 import { useAgents } from '@/context/agents-context';
+import { useAuth } from '@/context/auth-context';
+import { createGithubRepoForAgent } from '@/lib/github-sync';
 import { Agent } from '@/lib/types';
 import { useRouter } from 'next/navigation';
 
 export default function CreateAgentPage() {
     const router = useRouter();
     const { addAgent } = useAgents();
+    const { profile } = useAuth();
+
     const [description, setDescription] = useState('');
     const [isGenerating, setIsGenerating] = useState(false);
     const [isCreating, setIsCreating] = useState(false);
     const [promptTemplate, setPromptTemplate] = useState('');
     const [repoName, setRepoName] = useState('');
-    const [visibility, setVisibility] = useState('public');
+    const [visibility, setVisibility] = useState<'public' | 'private'>('public');
+    const [syncGithub, setSyncGithub] = useState(true);
+
+    const currentUser = profile?.username || 'developer';
+    const isGithubConnected = profile?.provider === 'github' || !!profile?.providerToken;
 
     async function handleAutoGenerate() {
         if (!description) {
@@ -60,36 +69,54 @@ export default function CreateAgentPage() {
         setIsCreating(true);
 
         try {
-            // Simulate API delay
-            await new Promise(resolve => setTimeout(resolve, 1500));
+            let githubUrl: string | undefined;
+
+            if (syncGithub) {
+                const ghResult = await createGithubRepoForAgent({
+                    repoName: repoName.trim(),
+                    description: description.trim(),
+                    visibility,
+                    promptTemplate,
+                    providerToken: profile?.providerToken,
+                    ownerUsername: currentUser,
+                });
+
+                if (ghResult.success && ghResult.htmlUrl) {
+                    githubUrl = ghResult.htmlUrl;
+                }
+            }
 
             const newAgent: Agent = {
-                id: repoName + '-' + Math.random().toString(36).substring(7),
+                id: repoName.toLowerCase().replace(/[^a-z0-9-_]/g, '-') + '-' + Math.random().toString(36).substring(7),
                 name: repoName.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' '),
-                owner: 'addy', // Hardcoded current user
+                owner: currentUser,
+                ownerAvatar: profile?.avatarUrl,
                 description: description || `AI Agent for ${repoName}`,
-                tags: ['Custom', 'New'],
+                tags: ['Custom', 'Autonomous'],
                 type: 'input-output',
-                rating: 0,
+                rating: 5.0,
                 runs: '0',
-                stars: 0,
+                stars: 1,
                 forks: 0,
                 issuesCount: 0,
                 pullRequestsCount: 0,
                 category: 'General',
                 updatedAt: 'Just now',
-                readme: `# ${repoName}\n\n${description || "No description provided."}`,
-                promptTemplate: promptTemplate,
-                configYaml: `name: ${repoName}\ntype: interactive`,
-                metadataJson: `{"version": "1.0.0"}`,
-                usageCode: `// Example usage\nconst response = await agent.run({ input: "your data" });`,
+                githubUrl: githubUrl || `https://github.com/${currentUser}/${repoName}`,
+                readme: `# ${repoName}\n\n${description || "No description provided."}\n\n## Prompt Template\n\`\`\`\n${promptTemplate || "System: You are an autonomous AI agent."}\n\`\`\``,
+                promptTemplate: promptTemplate || "System: You are an autonomous AI agent.",
+                configYaml: `name: ${repoName}\ntype: interactive\nowner: ${currentUser}`,
+                metadataJson: `{"version": "1.0.0", "syncedWithGithub": true}`,
+                usageCode: `// Example usage\nimport { runAgent } from './index';\n\nconst response = await runAgent({ input: "your task" });`,
             };
 
             addAgent(newAgent);
 
             toast({
-                title: "Repository Created!",
-                description: `Successfully created ${newAgent.name}.`,
+                title: "Agent Repository Created!",
+                description: githubUrl 
+                  ? `AgentSpace & GitHub repository synced at ${githubUrl}` 
+                  : `Successfully created ${newAgent.name}.`,
             });
 
             router.push(`/agent/${newAgent.id}`);
@@ -108,7 +135,7 @@ export default function CreateAgentPage() {
         <div className="container mx-auto px-4 py-12 max-w-4xl">
             <div className="space-y-2 mb-10">
                 <h1 className="text-3xl font-headline font-bold">Create a New Agent</h1>
-                <p className="text-muted-foreground">A repository contains all your agent code, prompt templates, and configuration.</p>
+                <p className="text-muted-foreground">Build, configure, and automatically synchronize your agent repository with GitHub.</p>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -117,9 +144,11 @@ export default function CreateAgentPage() {
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div className="space-y-2">
                                 <Label htmlFor="owner">Owner</Label>
-                                <div className="flex items-center gap-2 p-2 bg-muted rounded-md text-sm">
-                                    <div className="h-6 w-6 rounded-full bg-primary/20 flex items-center justify-center text-[10px] font-bold">AS</div>
-                                    addy
+                                <div className="flex items-center gap-2 p-2 bg-muted/60 border border-border/80 rounded-xl text-sm font-medium">
+                                    <div className="h-6 w-6 rounded-full bg-primary/20 flex items-center justify-center text-[10px] font-bold text-primary">
+                                        {currentUser.substring(0, 2).toUpperCase()}
+                                    </div>
+                                    <span className="truncate">{currentUser}</span>
                                 </div>
                             </div>
                             <div className="space-y-2">
@@ -129,6 +158,7 @@ export default function CreateAgentPage() {
                                     placeholder="my-awesome-agent"
                                     value={repoName}
                                     onChange={(e) => setRepoName(e.target.value)}
+                                    className="h-10 bg-background/50 border-border focus:border-primary rounded-xl"
                                 />
                             </div>
                         </div>
@@ -140,69 +170,103 @@ export default function CreateAgentPage() {
                                 placeholder="Briefly describe what your agent does..."
                                 value={description}
                                 onChange={(e) => setDescription(e.target.value)}
+                                className="h-10 bg-background/50 border-border focus:border-primary rounded-xl"
                             />
+                        </div>
+
+                        {/* GitHub Sync Status Card */}
+                        <div className="p-4 rounded-xl border border-primary/25 bg-primary/5 flex items-start gap-3">
+                            <GitBranch className="w-5 h-5 text-primary shrink-0 mt-0.5" />
+                            <div className="space-y-1 flex-1">
+                                <div className="flex items-center justify-between">
+                                    <span className="text-sm font-bold flex items-center gap-1.5">
+                                        GitHub Automatic Repository Sync
+                                        {isGithubConnected && (
+                                            <span className="px-2 py-0.5 rounded-full text-[10px] bg-emerald-500/15 text-emerald-500 font-semibold border border-emerald-500/30">
+                                                GitHub Authenticated
+                                            </span>
+                                        )}
+                                    </span>
+                                </div>
+                                <p className="text-xs text-muted-foreground">
+                                    When enabled, AgentSpace will automatically create a new repository on GitHub and commit your agent scaffolding files (`README.md`, `agent.json`, `index.ts`).
+                                </p>
+                                <div className="flex items-center space-x-2 pt-2">
+                                    <Checkbox
+                                        id="sync-gh"
+                                        checked={syncGithub}
+                                        onCheckedChange={(c) => setSyncGithub(!!c)}
+                                    />
+                                    <Label htmlFor="sync-gh" className="text-xs font-medium cursor-pointer">
+                                        Sync and create GitHub repository for this agent
+                                    </Label>
+                                </div>
+                            </div>
                         </div>
 
                         <Separator />
 
                         <div className="space-y-4">
                             <Label>Visibility</Label>
-                            <RadioGroup value={visibility} onValueChange={setVisibility} className="grid gap-4">
+                            <RadioGroup value={visibility} onValueChange={(v) => setVisibility(v as 'public' | 'private')} className="grid gap-4">
                                 <div
-                                    className={`flex items-start gap-3 p-4 border rounded-lg cursor-pointer transition-colors ${visibility === 'public' ? 'bg-primary/5 border-primary/40' : 'hover:bg-muted/30'}`}
+                                    className={`flex items-start gap-3 p-4 border rounded-xl cursor-pointer transition-colors ${visibility === 'public' ? 'bg-primary/5 border-primary/40' : 'hover:bg-muted/30 border-border/80'}`}
                                     onClick={() => setVisibility('public')}
                                 >
                                     <RadioGroupItem value="public" id="public" className="mt-1" />
                                     <Label htmlFor="public" className="flex-1 cursor-pointer">
                                         <div className="flex items-center gap-2 font-bold mb-1">
-                                            <Globe className="h-4 w-4" />
-                                            Public
+                                            <Globe className="h-4 w-4 text-primary" />
+                                            Public Repository
                                         </div>
-                                        <p className="text-xs font-normal text-muted-foreground">Anyone on the internet can see this agent. You choose who can commit.</p>
+                                        <p className="text-xs font-normal text-muted-foreground">Anyone on AgentSpace and GitHub can view and use this agent.</p>
                                     </Label>
                                 </div>
                                 <div
-                                    className={`flex items-start gap-3 p-4 border rounded-lg cursor-pointer transition-colors ${visibility === 'private' ? 'bg-primary/5 border-primary/40' : 'hover:bg-muted/30'}`}
+                                    className={`flex items-start gap-3 p-4 border rounded-xl cursor-pointer transition-colors ${visibility === 'private' ? 'bg-primary/5 border-primary/40' : 'hover:bg-muted/30 border-border/80'}`}
                                     onClick={() => setVisibility('private')}
                                 >
                                     <RadioGroupItem value="private" id="private" className="mt-1" />
                                     <Label htmlFor="private" className="flex-1 cursor-pointer">
                                         <div className="flex items-center gap-2 font-bold mb-1">
-                                            <Lock className="h-4 w-4" />
-                                            Private
+                                            <Lock className="h-4 w-4 text-amber-500" />
+                                            Private Repository
                                         </div>
-                                        <p className="text-xs font-normal text-muted-foreground">You choose who can see and commit to this agent.</p>
+                                        <p className="text-xs font-normal text-muted-foreground">Only authorized collaborators can view and commit to this agent.</p>
                                     </Label>
                                 </div>
                             </RadioGroup>
                         </div>
 
-                        <div className="space-y-4 pt-4">
+                        <div className="space-y-4 pt-2">
                             <Label htmlFor="prompt">Prompt Template</Label>
                             <Textarea
                                 id="prompt"
-                                placeholder="The master instructions for your agent..."
-                                className="min-h-[200px] font-code"
+                                placeholder="The master system prompt and instructions for your agent..."
+                                className="min-h-[180px] font-mono text-xs bg-background/50 border-border focus:border-primary rounded-xl"
                                 value={promptTemplate}
                                 onChange={(e) => setPromptTemplate(e.target.value)}
                             />
-                            <p className="text-[10px] text-muted-foreground italic">Tip: Use {"{{variable}}"} syntax for dynamic inputs.</p>
+                            <p className="text-[10px] text-muted-foreground italic">Tip: Use {"{{variable}}"} syntax for dynamic user inputs.</p>
                         </div>
 
-                        <div className="pt-6">
+                        <div className="pt-4">
                             <Button
                                 size="lg"
                                 onClick={handleCreate}
                                 disabled={isCreating}
-                                className="bg-primary hover:bg-primary/90 w-full sm:w-auto px-8 gap-2"
+                                className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold w-full sm:w-auto px-8 gap-2 rounded-xl shadow-md"
                             >
                                 {isCreating ? (
                                     <>
                                         <Loader2 className="h-4 w-4 animate-spin" />
-                                        Initializing...
+                                        Syncing with GitHub & AgentSpace...
                                     </>
                                 ) : (
-                                    "Create Repository"
+                                    <>
+                                        Create & Sync Agent
+                                        <GitBranch className="h-4 w-4 ml-1" />
+                                    </>
                                 )}
                             </Button>
                         </div>
@@ -210,14 +274,14 @@ export default function CreateAgentPage() {
                 </div>
 
                 <div className="space-y-6">
-                    <Card className="border-primary/20 bg-primary/5">
+                    <Card className="border-primary/20 bg-primary/5 rounded-2xl shadow-sm">
                         <CardHeader className="pb-3">
-                            <CardTitle className="text-lg flex items-center gap-2">
-                                <Sparkles className="h-5 w-5 text-primary" />
-                                Auto Repo Builder
+                            <CardTitle className="text-base flex items-center gap-2">
+                                <Sparkles className="h-4 w-4 text-primary" />
+                                AI Scaffolding Generator
                             </CardTitle>
                             <CardDescription className="text-xs">
-                                Describe what you want, and let AI build your agent's scaffolding.
+                                Describe your agent concept, and let AI generate the prompt and repo configuration.
                             </CardDescription>
                         </CardHeader>
                         <CardContent className="space-y-4">
@@ -225,15 +289,15 @@ export default function CreateAgentPage() {
                                 <Label htmlFor="ai-desc" className="text-xs">Agent Purpose</Label>
                                 <Textarea
                                     id="ai-desc"
-                                    placeholder="e.g. An agent that critiques creative writing and suggests structural changes."
-                                    className="bg-background text-xs min-h-[100px]"
+                                    placeholder="e.g. An agent that analyzes Github PRs and generates automated code reviews."
+                                    className="bg-background/80 text-xs min-h-[90px] rounded-xl"
                                     value={description}
                                     onChange={(e) => setDescription(e.target.value)}
                                 />
                             </div>
                             <Button
                                 onClick={handleAutoGenerate}
-                                className="w-full bg-primary hover:bg-primary/90 text-xs gap-2"
+                                className="w-full bg-primary hover:bg-primary/90 text-xs font-medium gap-2 rounded-xl"
                                 disabled={isGenerating}
                             >
                                 {isGenerating ? (
@@ -243,7 +307,7 @@ export default function CreateAgentPage() {
                                     </>
                                 ) : (
                                     <>
-                                        Generate Configuration
+                                        Auto-Generate Configuration
                                         <Sparkles className="h-3 w-3" />
                                     </>
                                 )}
@@ -251,25 +315,25 @@ export default function CreateAgentPage() {
                         </CardContent>
                     </Card>
 
-                    <Card className="border-muted">
+                    <Card className="border-border/80 rounded-2xl">
                         <CardHeader className="pb-3">
                             <CardTitle className="text-sm font-bold flex items-center gap-2">
-                                <Shield className="h-4 w-4 text-green-500" />
-                                Best Practices
+                                <Shield className="h-4 w-4 text-emerald-500" />
+                                GitHub Sync Benefits
                             </CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-3 text-xs text-muted-foreground">
                             <div className="flex gap-2">
-                                <Plus className="h-3 w-3 shrink-0 mt-0.5" />
-                                <p>Include clear tags for better discoverability.</p>
+                                <Plus className="h-3 w-3 shrink-0 mt-0.5 text-primary" />
+                                <p>Automatic repo creation under your GitHub account.</p>
                             </div>
                             <div className="flex gap-2">
-                                <Plus className="h-3 w-3 shrink-0 mt-0.5" />
-                                <p>Write a comprehensive README with usage examples.</p>
+                                <Plus className="h-3 w-3 shrink-0 mt-0.5 text-primary" />
+                                <p>Commits initial <code className="text-foreground">README.md</code>, <code className="text-foreground">agent.json</code>, and <code className="text-foreground">index.ts</code> code.</p>
                             </div>
                             <div className="flex gap-2">
-                                <Plus className="h-3 w-3 shrink-0 mt-0.5" />
-                                <p>Test your prompt template in Battle Mode before publishing.</p>
+                                <Plus className="h-3 w-3 shrink-0 mt-0.5 text-primary" />
+                                <p>Seamless version control and collaboration on AgentSpace.</p>
                             </div>
                         </CardContent>
                     </Card>

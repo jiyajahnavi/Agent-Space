@@ -11,6 +11,7 @@ export interface UserProfile {
   username: string;
   avatarUrl?: string;
   provider?: string;
+  providerToken?: string;
 }
 
 interface AuthContextType {
@@ -28,6 +29,7 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 const LOCAL_USER_KEY = 'agentspace_user_session';
+const GITHUB_TOKEN_KEY = 'agentspace_github_token';
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
@@ -46,7 +48,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           if (currentSession) {
             setSession(currentSession);
             setUser(currentSession.user);
-            extractProfile(currentSession.user);
+            extractProfile(currentSession.user, currentSession);
           } else {
             // Check local fallback session
             const stored = localStorage.getItem(LOCAL_USER_KEY);
@@ -75,7 +77,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setSession(newSession);
         setUser(newSession?.user ?? null);
         if (newSession?.user) {
-          extractProfile(newSession.user);
+          extractProfile(newSession.user, newSession);
         } else {
           // If no supabase session, check if we have local user profile
           const stored = localStorage.getItem(LOCAL_USER_KEY);
@@ -99,12 +101,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
-  const extractProfile = (userObj: User) => {
+  const extractProfile = (userObj: User, sessionObj?: Session | null) => {
     const meta = userObj.user_metadata || {};
     const email = userObj.email || '';
     const fullName = meta.full_name || meta.name || email.split('@')[0] || 'Agent Developer';
     const username = meta.preferred_username || meta.user_name || meta.username || email.split('@')[0].toLowerCase().replace(/[^a-z0-9]/g, '') || 'developer';
     const avatarUrl = meta.avatar_url || meta.picture || `https://api.dicebear.com/7.x/bottts/svg?seed=${username}`;
+
+    const providerToken = sessionObj?.provider_token || localStorage.getItem(GITHUB_TOKEN_KEY) || undefined;
+
+    if (sessionObj?.provider_token) {
+      localStorage.setItem(GITHUB_TOKEN_KEY, sessionObj.provider_token);
+    }
 
     const prof: UserProfile = {
       id: userObj.id,
@@ -112,7 +120,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       fullName,
       username,
       avatarUrl,
-      provider: userObj.app_metadata?.provider || 'email',
+      provider: userObj.app_metadata?.provider || (providerToken ? 'github' : 'email'),
+      providerToken,
     };
 
     setProfile(prof);
@@ -171,6 +180,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         provider: 'github',
         options: {
           redirectTo: redirectUrl,
+          scopes: 'repo read:user user:email',
         },
       });
 
@@ -182,7 +192,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           fullName: 'GitHub Developer',
           username: 'octocat',
           avatarUrl: 'https://avatars.githubusercontent.com/u/583231?v=4',
-          provider: 'github'
+          provider: 'github',
+          providerToken: 'demo_token_' + Date.now(),
         };
         setProfile(demoGithubUser);
         localStorage.setItem(LOCAL_USER_KEY, JSON.stringify(demoGithubUser));
@@ -197,7 +208,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         fullName: 'GitHub Developer',
         username: 'octocat',
         avatarUrl: 'https://avatars.githubusercontent.com/u/583231?v=4',
-        provider: 'github'
+        provider: 'github',
+        providerToken: 'demo_token_' + Date.now(),
       };
       setProfile(demoGithubUser);
       localStorage.setItem(LOCAL_USER_KEY, JSON.stringify(demoGithubUser));
@@ -231,7 +243,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       if (data.user) {
-        extractProfile(data.user);
+        extractProfile(data.user, data.session);
       }
       return { error: null };
     } catch (err: any) {
@@ -267,7 +279,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       if (data.user) {
-        extractProfile(data.user);
+        extractProfile(data.user, data.session);
       } else {
         const localProf: UserProfile = {
           id: 'usr-' + Date.now(),
@@ -296,6 +308,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setSession(null);
     setProfile(null);
     localStorage.removeItem(LOCAL_USER_KEY);
+    localStorage.removeItem(GITHUB_TOKEN_KEY);
   };
 
   return (
