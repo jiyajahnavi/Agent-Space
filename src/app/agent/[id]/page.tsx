@@ -13,6 +13,8 @@ import { Separator } from '@/components/ui/separator';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { AgentRunner } from '@/components/agent/AgentRunner';
 import { useAgents } from '@/context/agents-context';
+import { runAgentClient } from '@/lib/runAgentClient';
+import { FormattedMarkdown } from '@/components/agent/FormattedMarkdown';
 
 export default function AgentDetailPage() {
     const params = useParams();
@@ -37,17 +39,32 @@ export default function AgentDetailPage() {
     const [isProcessing, setIsProcessing] = useState(false);
     const [chatMessages, setChatMessages] = useState<{ role: 'user' | 'bot', text: string }[]>([]);
 
-    const handleSendMessage = () => {
-        if (!userInput.trim()) return;
-        const newMessages = [...chatMessages, { role: 'user', text: userInput } as const];
+    const handleSendMessage = async () => {
+        if (!userInput.trim() || isProcessing) return;
+        const promptText = userInput.trim();
+        const newMessages = [...chatMessages, { role: 'user', text: promptText } as const];
         setChatMessages(newMessages);
         setUserInput('');
         setIsProcessing(true);
 
-        setTimeout(() => {
-            setChatMessages([...newMessages, { role: 'bot', text: `As the ${agent.name}, I've processed your request. How else can I help you today?` } as const]);
+        try {
+            const responseText = await runAgentClient({
+                agentId: agent.id,
+                input: promptText,
+                agentName: agent.name,
+                agentDescription: agent.description,
+                agentPromptTemplate: agent.promptTemplate,
+            });
+
+            setChatMessages([...newMessages, { role: 'bot', text: responseText }]);
+        } catch (error: any) {
+            setChatMessages([
+                ...newMessages,
+                { role: 'bot', text: error?.message || 'Agent execution failed. Please try again.' }
+            ]);
+        } finally {
             setIsProcessing(false);
-        }, 800);
+        }
     };
 
     return (
@@ -181,8 +198,12 @@ export default function AgentDetailPage() {
                                                     <div className={`h-8 w-8 rounded-full flex items-center justify-center shrink-0 ${msg.role === 'user' ? 'bg-secondary/20' : 'bg-primary/20'}`}>
                                                         {msg.role === 'user' ? <User className="h-4 w-4" /> : <Bot className="h-4 w-4 text-primary" />}
                                                     </div>
-                                                    <div className={`rounded-2xl p-3 text-sm max-w-[80%] ${msg.role === 'user' ? 'bg-primary text-primary-foreground rounded-tr-none' : 'bg-muted/50 rounded-tl-none'}`}>
-                                                        {msg.text}
+                                                    <div className={`rounded-2xl p-4 text-sm max-w-[85%] ${msg.role === 'user' ? 'bg-primary text-primary-foreground rounded-tr-none' : 'bg-muted/50 rounded-tl-none'}`}>
+                                                        {msg.role === 'user' ? (
+                                                            msg.text
+                                                        ) : (
+                                                            <FormattedMarkdown content={msg.text} />
+                                                        )}
                                                     </div>
                                                 </div>
                                             ))}

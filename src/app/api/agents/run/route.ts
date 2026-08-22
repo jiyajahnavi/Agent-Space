@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { agentRegistry } from '@/lib/agents/agentRegistry';
 import { extractPdfText } from '@/lib/pdfExtract';
 import { chatComplete } from '@/lib/huggingface';
+import { isTargetChatAgent, runGeminiChatAgent } from '@/lib/agents/chatAgentsGemini';
 
 export const runtime = 'nodejs';
 export const maxDuration = 60;
@@ -12,8 +13,6 @@ export async function POST(req: NextRequest) {
     const agentId = formData.get('agentId');
     const textInput = (formData.get('input') as string | null) || '';
     const file = formData.get('file') as File | null;
-    // Used only for agents that don't have a specialized implementation below —
-    // lets any agent listed in the catalog run for real via a generic HF prompt.
     const agentName = (formData.get('agentName') as string | null) || 'AI Agent';
     const agentDescription = (formData.get('agentDescription') as string | null) || '';
     const agentPromptTemplate = (formData.get('agentPromptTemplate') as string | null) || '';
@@ -53,13 +52,19 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Please provide text input or upload a file.' }, { status: 400 });
     }
 
+    // 1. If registered in agentRegistry (including our 8 target Gemini chat agents)
     if (agent) {
       const result = await agent.run(combinedInput);
       return NextResponse.json({ result });
     }
 
-    // Generic path: any agent in the catalog without a specialized implementation
-    // still runs for real, using its own name/description/prompt template as system context.
+    // 2. Fallback check for target Gemini chat agents by ID or Name
+    if (isTargetChatAgent(agentId, agentName)) {
+      const result = await runGeminiChatAgent(agentId, combinedInput, agentName);
+      return NextResponse.json({ result });
+    }
+
+    // 3. Generic path for all other agents in catalog using HF model
     const systemPrompt = `You are "${agentName}", an AI agent. Your purpose: ${agentDescription || 'assist the user with their request.'}${
       agentPromptTemplate ? `\n\nYour operating instructions: ${agentPromptTemplate}` : ''
     }\n\nRespond directly and usefully to the user's input below, staying in character as this agent. Format your response with clear structure (headings, bullet points) where it helps readability. Do not mention that you are a generic or simulated agent.`;
