@@ -20,6 +20,22 @@ export interface GithubSyncResult {
   error?: string;
 }
 
+function toBase64(str: string): string {
+  try {
+    if (typeof window !== 'undefined' && 'btoa' in window) {
+      const bytes = new TextEncoder().encode(str);
+      let binary = '';
+      for (let i = 0; i < bytes.byteLength; i++) {
+        binary += String.fromCharCode(bytes[i]);
+      }
+      return btoa(binary);
+    }
+    return Buffer.from(str, 'utf-8').toString('base64');
+  } catch (e) {
+    return typeof window !== 'undefined' ? btoa(encodeURIComponent(str)) : Buffer.from(str).toString('base64');
+  }
+}
+
 export async function createGithubRepoForAgent({
   repoName,
   description,
@@ -33,10 +49,9 @@ export async function createGithubRepoForAgent({
     .trim()
     .replace(/[^a-z0-9-_]/g, '-');
 
-  // Fallback demo URL if provider token is missing or local sandbox fallback
   const fallbackUrl = `https://github.com/${ownerUsername}/${cleanRepoName}`;
 
-  if (!providerToken) {
+  if (!providerToken || providerToken.startsWith('demo_token_')) {
     console.log(`[GitHub Sync Fallback] Simulating repo creation for ${cleanRepoName}`);
     return {
       success: true,
@@ -58,13 +73,12 @@ export async function createGithubRepoForAgent({
         name: cleanRepoName,
         description: description || `AgentSpace Autonomous AI Agent: ${cleanRepoName}`,
         private: visibility === 'private',
-        auto_init: true, // Creates initial commit with README.md
+        auto_init: true,
       }),
     });
 
     if (!response.ok) {
-      const errorData = await response.json();
-      // If repo already exists, return existing URL gracefully
+      const errorData = await response.json().catch(() => ({}));
       if (errorData.message?.includes('already exists')) {
         return {
           success: true,
@@ -180,7 +194,7 @@ async function createOrUpdateFile({
   token: string;
 }) {
   try {
-    const encodedContent = btoa(unescape(encodeURIComponent(content)));
+    const encodedContent = toBase64(content);
     await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${path}`, {
       method: 'PUT',
       headers: {
