@@ -3,7 +3,7 @@
 import { useParams } from 'next/navigation';
 import { useState, useEffect } from 'react';
 import { Mail, MapPin, Link as LinkIcon, Twitter, Users, Star, BookOpen, GitBranch, GitPullRequest, CircleDot, Clock, User } from 'lucide-react';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { MOCK_USER } from '@/lib/data';
@@ -12,14 +12,33 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { useAgents } from '@/context/agents-context';
 
+import { useAuth } from '@/context/auth-context';
+
 export default function ProfilePage() {
     const params = useParams();
     const { agents } = useAgents();
-    const user = params.username === MOCK_USER.username ? MOCK_USER : MOCK_USER;
+    const { profile } = useAuth();
+
+    const paramUser = typeof params.username === 'string' ? params.username : '';
+    
+    // Determine active profile data
+    const isSelf = profile && (profile.username === paramUser || paramUser === 'addy' || !paramUser);
+    
+    const user = isSelf && profile ? {
+        name: profile.fullName,
+        username: profile.username,
+        bio: "Autonomous AI Agent Developer & System Architect building next-gen intelligence on AgentSpace.",
+        avatar: profile.avatarUrl,
+        followers: 248,
+        following: 19,
+        location: "San Francisco, CA",
+        website: "https://agentspace.ai",
+        twitter: profile.username,
+    } : MOCK_USER;
 
     // Filter agents owned by this user
-    const userAgents = agents.filter(a => a.owner === user.username);
-    const pinnedAgents = userAgents.slice(0, 4);
+    const userAgents = agents.filter(a => a.owner === user.username || (isSelf && a.owner === 'addy'));
+    const pinnedAgents = userAgents.length > 0 ? userAgents.slice(0, 4) : agents.slice(0, 2);
 
     const [contributionDays, setContributionDays] = useState<{ level: number, date: Date }[]>([]);
 
@@ -59,9 +78,10 @@ export default function ProfilePage() {
             <div className="flex flex-col lg:flex-row gap-8">
                 <aside className="w-full lg:w-72 space-y-6 shrink-0">
                     <div className="space-y-4">
-                        <Avatar className="h-64 w-64 border-2 border-muted-foreground/10 rounded-2xl mx-auto lg:mx-0 flex items-center justify-center bg-muted">
-                            <AvatarFallback className="bg-transparent">
-                                <User className="h-32 w-32 text-muted-foreground/40" />
+                        <Avatar className="h-64 w-64 border-2 border-muted-foreground/10 rounded-2xl mx-auto lg:mx-0 flex items-center justify-center bg-muted overflow-hidden">
+                            <AvatarImage src={user.avatar} alt={user.name} className="object-cover" />
+                            <AvatarFallback className="bg-primary/20 text-primary font-bold text-4xl">
+                                {user.name ? user.name.charAt(0).toUpperCase() : 'A'}
                             </AvatarFallback>
                         </Avatar>
                         <div className="space-y-1">
