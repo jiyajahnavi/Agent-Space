@@ -19,7 +19,7 @@
 
 ### 📊 Project Resources
 
-[![View PPT](https://img.shields.io/badge/View%20Project%20PPT-4285F4?style=for-the-badge&logo=google-slides&logoColor=white)](YOUR_PPT_LINK)
+[![View PPT](https://img.shields.io/badge/View%20Project%20PPT-4285F4?style=for-the-badge&logo=google-slides&logoColor=white)](https://github.com/jiyajahnavi/Agent-Space/blob/main/AgentSpace_Challenge_640_Zuup_hackathon_oneway.pdf)
 [![▶️ Project Explanation](https://img.shields.io/badge/▶️%20Project%20Explanation-FF0000?style=for-the-badge&logo=youtube&logoColor=white)](https://www.youtube.com/watch?v=uH5_L9_EKuE)
 [![🚀 Live Demo](https://img.shields.io/badge/🚀%20Live%20Demo-00C853?style=for-the-badge)](https://agent-space-five.vercel.app/)
 
